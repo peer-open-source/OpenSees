@@ -1,12 +1,7 @@
 [project]
 name = "opensees"
 version = "0.1.16"
-# authors = [
-#   {name=""}
-#   # <50180406+claudioperez@users.noreply.github.com>"
-# ]
 
-# license = {file = "LICENSE.txt"}
 
 readme = "about/README.pypi.md"
 
@@ -67,8 +62,6 @@ testing = [
     "pytest-flake8",
     "nbmake"
 ]
-
-# py = ["openseespy"]
 
 
 [project.urls]
