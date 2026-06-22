@@ -25,7 +25,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -61,6 +61,7 @@
       <ObjectFileName>.\..\..\obj\optimization\debug/</ObjectFileName>
       <ProgramDataBaseFileName>.\..\..\obj\optimization\debug/</ProgramDataBaseFileName>
       <BrowseInformation>true</BrowseInformation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Lib>
       <OutputFile>.\..\..\lib\debug\optimization.lib</OutputFile>
@@ -87,6 +88,7 @@
       <AssemblerListingLocation>.\..\..\obj\optimization\release/</AssemblerListingLocation>
       <ObjectFileName>.\..\..\obj\optimization\release/</ObjectFileName>
       <ProgramDataBaseFileName>.\..\..\obj\optimization\release/</ProgramDataBaseFileName>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Lib>
       <OutputFile>.\..\..\lib\release\optimization.lib</OutputFile>

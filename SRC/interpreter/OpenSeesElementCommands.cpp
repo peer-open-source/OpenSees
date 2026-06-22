@@ -148,7 +148,7 @@ void* OPS_PFEMElement2DCompressible(const ID& info);
 void* OPS_PFEMElement2Dmini(const ID& info);
 void* OPS_fElmt02();
 void* OPS_ElasticBeam2d(const ID& info);
-void* OPS_ElasticBeam3d();
+void* OPS_ElasticBeam3d(const ID& info);
 void* OPS_ElasticBeamWarping3d();
 void* OPS_DispBeamColumn2dInt();
 void* OPS_ForceBeamColumn2d(const ID& info);
@@ -264,6 +264,7 @@ void* OPS_ShellNLDKGQThermal();
 void* OPS_ShellNLDKGTThermal();
 void* OPS_PipeElement();
 void* OPS_CurvedPipeElement();
+void* OPS_PML3DVISCOUS(void);
 
 
 namespace {
@@ -346,13 +347,24 @@ namespace {
     static void* OPS_ElasticBeam()
     {
 	int ndm = OPS_GetNDM();
+	ID info;
 	if(ndm == 2) {
-	    ID info;
 	    return OPS_ElasticBeam2d(info);
 	} else {
-	    return OPS_ElasticBeam3d();
+	    return OPS_ElasticBeam3d(info);
 	}
     }
+
+    static void* OPS_ModElasticBeam()
+    {
+	int ndm = OPS_GetNDM();
+	if(ndm == 2) {
+	    ID info;
+	    return OPS_ModElasticBeam2d();
+	} else {
+	    return OPS_ModElasticBeam3d();
+	}
+    }  
 
     static void* OPS_MVLEM2d3d()
     {
@@ -382,7 +394,7 @@ namespace {
 	if(ndm == 3)
 	    return OPS_E_SFI_MVLEM_3D();	
 	return 0;
-    }      
+    }    
 
     static void* OPS_DispBeamColumn()
     {
@@ -466,7 +478,7 @@ namespace {
 	    return OPS_BeamColumnJoint3d();
 	}
     }
-	
+
     static void* OPS_FlatSliderBearing()
     {
 	int ndm = OPS_GetNDM();
@@ -594,7 +606,7 @@ namespace {
 	  return OPS_PML2D();
 	}
 	else {
-	  return OPS_PML3D();
+	  return OPS_PML3DVISCOUS();
 	}
   }
 
@@ -701,6 +713,8 @@ namespace {
 	functionMap.insert(std::make_pair("componentElement2d", &OPS_ComponentElement));
 	functionMap.insert(std::make_pair("componentElement", &OPS_ComponentElement));	
 	functionMap.insert(std::make_pair("zeroLengthImpact3D", &OPS_ZeroLengthImpact3D));
+	functionMap.insert(std::make_pair("ModElasticBeam", &OPS_ModElasticBeam));
+	functionMap.insert(std::make_pair("modElasticBeam", &OPS_ModElasticBeam));
 	functionMap.insert(std::make_pair("ModElasticBeam2d", &OPS_ModElasticBeam2d));
 	functionMap.insert(std::make_pair("modElasticBeam2d", &OPS_ModElasticBeam2d));
 	functionMap.insert(std::make_pair("ModElasticBeam3d", &OPS_ModElasticBeam3d));
@@ -815,6 +829,7 @@ namespace {
 	functionMap.insert(std::make_pair("PML2D_5", &OPS_PML2D_5));
 	functionMap.insert(std::make_pair("PML2D_12", &OPS_PML2D_12));
 	functionMap.insert(std::make_pair("PML2DVISCOUS", &OPS_PML2DVISCOUS));
+	functionMap.insert(std::make_pair("PML3DVISCOUS", &OPS_PML3DVISCOUS));
 	functionMap.insert(std::make_pair("ShellNLDKGQThermal", &OPS_ShellNLDKGQThermal));
 	functionMap.insert(std::make_pair("shellNLDKGQThermal", &OPS_ShellNLDKGQThermal));
 	functionMap.insert(std::make_pair("ShellNLDKGTThermal", &OPS_ShellNLDKGTThermal));

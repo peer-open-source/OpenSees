@@ -50,6 +50,8 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 // define opserr
 static PythonStream sserr;
 OPS_Stream *opserrPtr = &sserr;
+static PythonModule* module = nullptr;
+static PyObject* pymodule = nullptr;
 
 
 PythonModule::PythonModule()
@@ -189,7 +191,7 @@ int PythonModule::getDoubleList(int* size, Vector* data)
     wrapper.incrCurrentArg();
 
     if (PyList_Check(o)) {
-        *size = PyList_Size(o);
+        *size = (int)PyList_Size(o);
         data->resize(*size);
         for (int i = 0; i < *size; i++) {
             PyErr_Clear();
@@ -205,7 +207,7 @@ int PythonModule::getDoubleList(int* size, Vector* data)
         }
     }
     else if (PyTuple_Check(o)) {
-        *size = PyTuple_Size(o);
+        *size = (int)PyTuple_Size(o);
         data->resize(*size);
         for (int i = 0; i < *size; i++) {
             PyErr_Clear();
@@ -320,46 +322,65 @@ const char *PythonModule::getStringFromAll(char* buffer, int len) {
 #endif
 }
 
+void*
+PythonModule::getVoidPtr()
+{
+    if (wrapper.getCurrentArg() >= wrapper.getNumberArgs()) {
+        return nullptr;
+    }
+    PyObject *obj =
+        PyTuple_GetItem(wrapper.getCurrentArgv(), wrapper.getCurrentArg());
+    wrapper.incrCurrentArg();
+    return static_cast<void*>(obj);
+}
+
+/*
 int
 PythonModule::getStringCopy(char **stringPtr) {
     return -1;
 }
+*/
 
 int 
 PythonModule::evalDoubleStringExpression(const char* theExpression, double& current_val)
 {
     if (theExpression == 0) {
-        opserr << "OPS_EvalDoubleStringExpression Error: Expression not set\n";
+        opserr << "PythonModule::evalDoubleStringExpression error: Expression not set\n";
         return -1;
     }
 
     // run the string and get results
     PyObject* py_main = PyImport_AddModule("__main__");
     if (py_main == NULL) {
-        opserr << "OPS_EvalDoubleStringExpression Error: cannot add module  __main__\n";
+        opserr << "PythonModule::evalDoubleStringExpression error: cannot add module  __main__\n";
         return -1;
     }
     PyObject* py_dict = PyModule_GetDict(py_main);
     if (py_main == NULL) {
-        opserr << "OPS_EvalDoubleStringExpression Error: cannot get dict of module __main__\n";
+        opserr << "PythonModule::evalDoubleStringExpression error: cannot get dict of module __main__\n";
         return -1;
     }
     PyObject* PyRes = PyRun_String(theExpression, Py_eval_input, py_dict, py_dict);
 
     if (PyRes == NULL) {
-        opserr << "OPS_EvalDoubleStringExpression Error: failed to evaluate expression\n";
+        opserr << "PythonModule::evalDoubleStringExpression error: failed to evaluate expression\n";
         return -1;
     }
 
     // get results
     if (!(PyLong_Check(PyRes) || PyFloat_Check(PyRes) || PyBool_Check(PyRes))) {
-        opserr << "OPS_EvalDoubleStringExpression Error: the expression must return a float (or int or bool)\n";
+        opserr << "PythonModule::evalDoubleStringExpression error: the expression must return a float (or int or bool)\n";
         return -1;
     }
     current_val = PyFloat_AsDouble(PyRes);
 
     // done
     return 0;
+}
+
+void
+PythonModule::resetInput(int nArgs, int cArg, const char** argv) {
+    wrapper.resetCommandLine(nArgs, cArg, (PyObject*)argv);
 }
 
 void
@@ -440,12 +461,27 @@ int PythonModule::setString(std::map<const char*, std::vector<const char*>>& dat
     return 0;
 }
 
+int PythonModule::setGenericDict(GenericDict& data) {
+    wrapper.setGenericDictOutput(data);
+    return 0;
+}
+
 int
 PythonModule::runCommand(const char *cmd) {
     return PyRun_SimpleString(cmd);
 }
 
-static PythonModule *module = 0;
+PyObject* 
+getPyModule() {
+    if (pymodule == nullptr) {
+        opserr << "getPyModule() error: module not initialized\n";
+        return NULL;
+    }
+    
+    //Py_INCREF(pymodule); // NOT sure if this is needed
+    return pymodule;
+}
+
 
 PyMethodDef *getmethodsFunc() {
     module = new PythonModule;
@@ -457,7 +493,7 @@ PyMethodDef *getmethodsFunc() {
 
 void cleanupFunc() {
     module->getCmds().wipe();
-    if (module != 0) {
+    if (module != nullptr) {
         delete module;
     }
 }
@@ -522,13 +558,19 @@ initopensees(void)
 #endif
 {
 #if PY_MAJOR_VERSION >= 3
-    PyObject *pymodule = PyModule_Create(&moduledef);
-#else
-    PyObject *pymodule = Py_InitModule("opensees", getmethodsFunc());
-#endif
-
+    // create Python module
+    pymodule = PyModule_Create(&moduledef);
     if (pymodule == NULL)
         INITERROR;
+    // attache module object to the interpreter state
+    if (PyState_AddModule(pymodule, &moduledef) != 0)
+        INITERROR;
+#else
+    pymodule = Py_InitModule("opensees", getmethodsFunc());
+    if (pymodule == NULL)
+        INITERROR;
+#endif
+
     struct module_state *st = GETSTATE(pymodule);
 
     // add OpenSeesError

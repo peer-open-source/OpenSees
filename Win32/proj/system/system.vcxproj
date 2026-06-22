@@ -25,7 +25,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -47,7 +47,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\..\src\api;..\..\..\src\recorder;..\..\..\src\element;..\..\..\src\element\PFEMElement;..\..\..\src\domain\node;..\..\..\src\domain\component;..\..\..\src\domain\constraints;..\..\..\other\CSPARSE;..\..\..\src\utility;..\..\..\other\SuperLU_5.1.1\SRC;..\..\..\src\system_of_eqn\linearSOE\diagonal;..\..\..\src\system_of_eqn\linearSOE;..\..\..\src\system_of_eqn\linearSOE\sparseSYM;..\..\..\src\analysis\integrator;..\..\..\src\analysis\fe_ele;..\..\..\src\analysis\dof_grp;..\..\..\src\system_of_eqn\eigenSOE;..\..\..\src\handler;..\..\..\symSparse;..\..\..\src\analysis\model\simple;..\..\..\src\system_of_eqn\linearSOE\umfGEN;..\..\..\src\system_of_eqn\linearSOE\fullGEN;..\..\..\src\system_of_eqn\linearSOE\sparseGEN;..\..\..\src\system_of_eqn\linearSOE\bandSPD;..\..\..\src\system_of_eqn\linearSOE\bandGEN;..\..\..\src\domain\domain;..\..\..\src\analysis\model;..\..\..\src\actor\objectBroker;..\..\..\src\actor\channel;..\..\..\src\tagged;..\..\..\src\graph\graph;..\..\..\src\system_of_eqn\linearSOE\profileSPD;..\..\..\src;..\..\..\src\matrix;..\..\..\src\actor\actor;..\..\..\src\system_of_eqn;..\..\..\src\nDarray;..\..\..\src\system_of_eqn\linearSOE\itpack;..\..\..\src\system_of_eqn\linearSOE\cg;c:\Program Files (x86)\tcl;c:\Program Files (x86)\tcl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\src\api;..\..\..\src\recorder;..\..\..\src\element;..\..\..\src\element\PFEMElement;..\..\..\src\domain\node;..\..\..\src\domain\component;..\..\..\src\domain\constraints;..\..\..\other\CSPARSE;..\..\..\src\utility;..\..\..\other\SuperLU_5.1.1\SRC;..\..\..\src\system_of_eqn\linearSOE\diagonal;..\..\..\src\system_of_eqn\linearSOE;..\..\..\src\system_of_eqn\linearSOE\sparseSYM;..\..\..\src\analysis\integrator;..\..\..\src\analysis\fe_ele;..\..\..\src\analysis\dof_grp;..\..\..\src\system_of_eqn\eigenSOE;..\..\..\src\handler;..\..\..\symSparse;..\..\..\src\analysis\model\simple;..\..\..\src\system_of_eqn\linearSOE\umfGEN;..\..\..\src\system_of_eqn\linearSOE\fullGEN;..\..\..\src\system_of_eqn\linearSOE\sparseGEN;..\..\..\src\system_of_eqn\linearSOE\bandSPD;..\..\..\src\system_of_eqn\linearSOE\bandGEN;..\..\..\src\domain\domain;..\..\..\src\analysis\model;..\..\..\src\actor\objectBroker;..\..\..\src\actor\channel;..\..\..\src\tagged;..\..\..\src\graph\graph;..\..\..\src\system_of_eqn\linearSOE\profileSPD;..\..\..\src;..\..\..\src\matrix;..\..\..\src\actor\actor;..\..\..\src\system_of_eqn;..\..\..\src\nDarray;..\..\..\src\system_of_eqn\linearSOE\itpack;..\..\..\src\system_of_eqn\linearSOE\cg;C:\Program Files (x86)\tcl;C:\Program Files (x86)\tcl\include;C:\ProgramData\Anaconda3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;_WIN32;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -60,6 +60,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>Default</CompileAs>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Lib>
       <OutputFile>.\..\..\lib\debug\system.lib</OutputFile>
@@ -76,7 +77,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <AdditionalIncludeDirectories>..\..\..\src\api;..\..\..\src\recorder;..\..\..\src\element;..\..\..\src\element\PFEMElement;..\..\..\src\domain\node;..\..\..\src\domain\component;..\..\..\src\domain\constraints;..\..\..\other\CSPARSE;..\..\..\src\utility;..\..\..\other\SuperLU_5.1.1\SRC;..\..\..\src\system_of_eqn\linearSOE\diagonal;..\..\..\src\system_of_eqn\linearSOE;..\..\..\src\system_of_eqn\linearSOE\sparseSYM;..\..\..\src\analysis\integrator;..\..\..\src\analysis\fe_ele;..\..\..\src\analysis\dof_grp;..\..\..\src\system_of_eqn\eigenSOE;..\..\..\src\handler;..\..\..\symSparse;..\..\..\src\analysis\model\simple;..\..\..\src\system_of_eqn\linearSOE\umfGEN;..\..\..\src\system_of_eqn\linearSOE\fullGEN;..\..\..\src\system_of_eqn\linearSOE\sparseGEN;..\..\..\src\system_of_eqn\linearSOE\bandSPD;..\..\..\src\system_of_eqn\linearSOE\bandGEN;..\..\..\src\domain\domain;..\..\..\src\analysis\model;..\..\..\src\actor\objectBroker;..\..\..\src\actor\channel;..\..\..\src\tagged;..\..\..\src\graph\graph;..\..\..\src\system_of_eqn\linearSOE\profileSPD;..\..\..\src;..\..\..\src\matrix;..\..\..\src\actor\actor;..\..\..\src\system_of_eqn;..\..\..\src\nDarray;..\..\..\src\system_of_eqn\linearSOE\itpack;..\..\..\src\system_of_eqn\linearSOE\cg;c:\Program Files (x86)\tcl;c:\Program Files (x86)\tcl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\src\api;..\..\..\src\recorder;..\..\..\src\element;..\..\..\src\element\PFEMElement;..\..\..\src\domain\node;..\..\..\src\domain\component;..\..\..\src\domain\constraints;..\..\..\other\CSPARSE;..\..\..\src\utility;..\..\..\other\SuperLU_5.1.1\SRC;..\..\..\src\system_of_eqn\linearSOE\diagonal;..\..\..\src\system_of_eqn\linearSOE;..\..\..\src\system_of_eqn\linearSOE\sparseSYM;..\..\..\src\analysis\integrator;..\..\..\src\analysis\fe_ele;..\..\..\src\analysis\dof_grp;..\..\..\src\system_of_eqn\eigenSOE;..\..\..\src\handler;..\..\..\symSparse;..\..\..\src\analysis\model\simple;..\..\..\src\system_of_eqn\linearSOE\umfGEN;..\..\..\src\system_of_eqn\linearSOE\fullGEN;..\..\..\src\system_of_eqn\linearSOE\sparseGEN;..\..\..\src\system_of_eqn\linearSOE\bandSPD;..\..\..\src\system_of_eqn\linearSOE\bandGEN;..\..\..\src\domain\domain;..\..\..\src\analysis\model;..\..\..\src\actor\objectBroker;..\..\..\src\actor\channel;..\..\..\src\tagged;..\..\..\src\graph\graph;..\..\..\src\system_of_eqn\linearSOE\profileSPD;..\..\..\src;..\..\..\src\matrix;..\..\..\src\actor\actor;..\..\..\src\system_of_eqn;..\..\..\src\nDarray;..\..\..\src\system_of_eqn\linearSOE\itpack;..\..\..\src\system_of_eqn\linearSOE\cg;C:\Program Files (x86)\tcl;C:\Program Files (x86)\tcl\include;C:\ProgramData\Anaconda3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -88,6 +89,7 @@
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <CompileAs>Default</CompileAs>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Lib>
       <OutputFile>.\..\..\lib\release\system.lib</OutputFile>
@@ -102,6 +104,14 @@
     </BuildLog>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCompressedEigenSOE.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCompressedEigenSolver.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCOOEigenSOE.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCOOEigenSolver.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonEigenCommon.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonEigenFactory.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\SymmGeneralizedEigenSOE.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\SymmGeneralizedEigenSolver.cpp" />
     <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\DomainSolver.cpp" />
     <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\EigenSOE.cpp" />
     <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\EigenSolver.cpp" />
@@ -110,6 +120,12 @@
     <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparseGEN\PFEMSolver_Laplace.cpp" />
     <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparseGEN\PFEMSolver_LumpM.cpp" />
     <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparseGEN\PFEMSolver_Umfpack.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCommon.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCompressedLinSOE.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCompressedLinSolver.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCOOLinSOE.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCOOLinSolver.cpp" />
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonFactory.cpp" />
     <ClCompile Include="..\..\..\SRC\system_of_eqn\Solver.cpp" />
     <ClCompile Include="..\..\..\SRC\system_of_eqn\SystemOfEqn.cpp" />
     <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\profileSPD\DistributedProfileSPDLinSOE.cpp" />
@@ -164,6 +180,14 @@
     <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\diagonal\DistributedDiagonalSolver.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCompressedEigenSOE.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCompressedEigenSolver.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCOOEigenSOE.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCOOEigenSolver.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonEigenCommon.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonEigenFactory.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\SymmGeneralizedEigenSOE.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\SymmGeneralizedEigenSolver.h" />
     <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\DomainSolver.h" />
     <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\EigenSOE.h" />
     <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\EigenSolver.h" />
@@ -172,6 +196,12 @@
     <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparseGEN\PFEMSolver_Laplace.h" />
     <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparseGEN\PFEMSolver_LumpM.h" />
     <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparseGEN\PFEMSolver_Umfpack.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCommon.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCompressedLinSOE.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCompressedLinSolver.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCOOLinSOE.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCOOLinSolver.h" />
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonFactory.h" />
     <ClInclude Include="..\..\..\SRC\system_of_eqn\Solver.h" />
     <ClInclude Include="..\..\..\SRC\system_of_eqn\SystemOfEqn.h" />
     <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\profileSPD\DistributedProfileSPDLinSOE.h" />

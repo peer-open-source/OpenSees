@@ -79,6 +79,8 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <SymBandEigenSOE.h>
 #include <FullGenEigenSolver.h>
 #include <FullGenEigenSOE.h>
+#include <SymmGeneralizedEigenSolver.h>
+#include <SymmGeneralizedEigenSOE.h>
 #include <ArpackSOE.h>
 #include <LoadControl.h>
 #include <CTestPFEM.h>
@@ -86,6 +88,8 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <TransientIntegrator.h>
 #include <PFEMSolver.h>
 #include <PFEMLinSOE.h>
+#include <SparsePythonFactory.h>
+#include <SparsePythonEigenFactory.h>
 #include <Accelerator.h>
 #include <KrylovAccelerator.h>
 #include <AcceleratedNewton.h>
@@ -102,11 +106,16 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <NewtonLineSearch.h>
 #include <FileDatastore.h>
 #include <Mesh.h>
+#include <BackgroundMesh.h>
 #ifdef _MUMPS
 #include <MumpsSolver.h>
 #include <MumpsSOE.h>
 #endif
-#include <BackgroundMesh.h>
+
+#ifdef _ITPACK
+#include <ItpackLinSOE.h>
+#include <ItpackLinSolver.h>
+#endif
 
 #ifdef _PARALLEL_INTERPRETERS
 bool setMPIDSOEFlag = false;
@@ -139,9 +148,30 @@ bool setMPIDSOEFlag = false;
 #endif
 #endif
 
+typedef struct materialFunction {
+    char* funcName;
+    matFunct theFunct;
+    struct materialFunction* next;
+} MaterialFunction;
+
+typedef struct limitCurveFunction {
+    char* funcName;
+    limCrvFunct theFunct;
+    struct limitCurveFunction* next;
+} LimitCurveFunction;
+
+typedef struct elementFunction {
+    char* funcName;
+    eleFunct theFunct;
+    struct elementFunction* next;
+} ElementFunction;
 
 // active object
 static OpenSeesCommands* cmds = 0;
+static MaterialFunction* theMaterialFunctions = 0;
+static LimitCurveFunction* theLimitCurveFunctions = 0;
+static ElementFunction* theElementFunctions = 0;
+
 
 OpenSeesCommands::OpenSeesCommands(DL_Interpreter* interp)
     :interpreter(interp), theDomain(0), 
@@ -150,8 +180,8 @@ OpenSeesCommands::OpenSeesCommands(DL_Interpreter* interp)
      theStaticIntegrator(0), theTransientIntegrator(0),
      theAlgorithm(0), theStaticAnalysis(0), theTransientAnalysis(0),
      theVariableTimeStepTransientAnalysis(0),
-     thePFEMAnalysis(0),
-     theAnalysisModel(0), theTest(0), numEigen(0), theDatabase(0),
+     thePFEMAnalysis(0), theAnalysisModel(0), theTest(0),
+     numEigen(0), builtModel(false), theDatabase(0),
      theBroker(), theTimer(), theSimulationInfo(), theMachineBroker(0),
      theChannels(0), numChannels(0), reliability(0)
 {
@@ -217,13 +247,14 @@ OpenSeesCommands::getDomain()
 ReliabilityDomain*
 OpenSeesCommands::getReliabilityDomain()
 {
-  if (reliability == 0) {
-    return 0;
-  }
-  return reliability->getDomain();
+    if (reliability == 0) {
+        return 0;
+    }
+    return reliability->getDomain();
 }
 
-AnalysisModel** OpenSeesCommands::getAnalysisModel()
+AnalysisModel**
+OpenSeesCommands::getAnalysisModel()
 {
     return &theAnalysisModel;
 }
@@ -254,7 +285,8 @@ OpenSeesCommands::setSOE(LinearSOE* soe)
 
 int
 OpenSeesCommands::eigen(int typeSolver, double shift,
-			bool generalizedAlgo, bool findSmallest)
+			bool generalizedAlgo, bool findSmallest,
+            EigenSOE *providedEigenSOE)
 {
     //
     // create a transient analysis if no analysis exists
@@ -265,6 +297,9 @@ OpenSeesCommands::eigen(int typeSolver, double shift,
 	    theAnalysisModel = new AnalysisModel();
 	if (theTest == 0)
 	    theTest = new CTestNormUnbalance(1.0e-6,25,0);
+	if (theAlgorithm != 0) {
+	    theAlgorithm->setConvergenceTest(theTest);
+	}
 	if (theAlgorithm == 0) {
 	    theAlgorithm = new NewtonRaphson(*theTest);
 	}
@@ -296,43 +331,61 @@ OpenSeesCommands::eigen(int typeSolver, double shift,
     }
 
     //
-    // create a new eigen system and solver
+    // create or assign an eigen system and solver
     //
-    if (theEigenSOE != 0) {
-	if (theEigenSOE->getClassTag() != typeSolver) {
-	    //	delete theEigenSOE;
-	    theEigenSOE = 0;
-	}
+    bool eigenSOEUpdated = false;
+
+    if (providedEigenSOE != 0) {
+        theEigenSOE = providedEigenSOE;
+        eigenSOEUpdated = true;
+    } else {
+        if (theEigenSOE != 0) {
+            if (theEigenSOE->getClassTag() != typeSolver) {
+                //	delete theEigenSOE;
+                theEigenSOE = 0;
+            }
+        }
+
+        if (theEigenSOE == 0) {
+
+            if (typeSolver == EigenSOE_TAGS_SymBandEigenSOE) {
+                SymBandEigenSolver *theEigenSolver = new SymBandEigenSolver();
+                theEigenSOE = new SymBandEigenSOE(*theEigenSolver, *theAnalysisModel);
+
+            } else if (typeSolver == EigenSOE_TAGS_FullGenEigenSOE) {
+
+                FullGenEigenSolver *theEigenSolver = new FullGenEigenSolver();
+                theEigenSOE = new FullGenEigenSOE(*theEigenSolver, *theAnalysisModel);
+
+            } else if (typeSolver == EigenSOE_TAGS_SymmGeneralizedEigenSOE) {
+
+#ifdef _WIN32
+                opserr << "SymmGeneralizedEigenSolver not currently compiled for Windows" << endln;
+#else
+                SymmGeneralizedEigenSolver *theEigenSolver = new SymmGeneralizedEigenSolver();
+                theEigenSOE = new SymmGeneralizedEigenSOE(*theEigenSolver, *theAnalysisModel);
+#endif
+
+            } else {
+
+                theEigenSOE = new ArpackSOE(shift);
+
+            }
+
+            eigenSOEUpdated = true;
+        }
     }
 
-    if (theEigenSOE == 0) {
-
-	if (typeSolver == EigenSOE_TAGS_SymBandEigenSOE) {
-	    SymBandEigenSolver *theEigenSolver = new SymBandEigenSolver();
-	    theEigenSOE = new SymBandEigenSOE(*theEigenSolver, *theAnalysisModel);
-
-	} else if (typeSolver == EigenSOE_TAGS_FullGenEigenSOE) {
-
-	    FullGenEigenSolver *theEigenSolver = new FullGenEigenSolver();
-	    theEigenSOE = new FullGenEigenSOE(*theEigenSolver, *theAnalysisModel);
-
-	} else {
-
-	    theEigenSOE = new ArpackSOE(shift);
-
-	}
-
-	//
-	// set the eigen soe in the system
-	//
-
-	if (theStaticAnalysis != 0) {
-	    theStaticAnalysis->setEigenSOE(*theEigenSOE);
-	} else if (theTransientAnalysis != 0) {
-	    theTransientAnalysis->setEigenSOE(*theEigenSOE);
-	}
-
-    } // theEigenSOE != 0
+    //
+    // set the eigen soe in the system if reassigned/created
+    //
+    if (eigenSOEUpdated && theEigenSOE != 0) {
+        if (theStaticAnalysis != 0) {
+            theStaticAnalysis->setEigenSOE(*theEigenSOE);
+        } else if (theTransientAnalysis != 0) {
+            theTransientAnalysis->setEigenSOE(*theEigenSOE);
+        }
+    }
 
 
     // run analysis
@@ -358,20 +411,6 @@ OpenSeesCommands::eigen(int typeSolver, double shift,
     }
 
     return result;
-}
-
-int* OPS_GetNumEigen()                                                          
-{                                                                               
-    static int numEigen = 0;                                                    
-    if (cmds == 0) return 0;                                                    
-    numEigen = cmds->getNumEigen();                                             
-    int numdata = 1;                                                            
-    if (OPS_SetIntOutput(&numdata, &numEigen, true) < 0) {
-        opserr << "WARNING failed to set output\n";                             
-        return 0;                                                               
-    }                                                                           
-                                                                                
-    return &numEigen;                                                           
 }
 
 void
@@ -505,7 +544,8 @@ OpenSeesCommands::setTransientIntegrator(TransientIntegrator* integrator)
     }
 }
 
-void OpenSeesCommands::setIntegrator(Integrator* inte,
+void
+OpenSeesCommands::setIntegrator(Integrator* inte,
                                      bool transient) {
   if (inte == 0) {
     return;
@@ -569,6 +609,9 @@ OpenSeesCommands::setStaticAnalysis(bool suppress)
     }
     if (theTest == 0) {
 	theTest = new CTestNormUnbalance(1.0e-6,25,0);
+    }
+    if (theAlgorithm != 0) {
+	theAlgorithm->setConvergenceTest(theTest);
     }
     if (theAlgorithm == 0) {
       if (!suppress) {
@@ -676,6 +719,9 @@ OpenSeesCommands::setPFEMAnalysis(bool suppress)
 	//theTest = new CTestNormUnbalance(1e-2,10000,1,2,3);
 	theTest = new CTestPFEM(1e-2,1e-2,1e-2,1e-2,1e-4,1e-3,10000,100,1,2);
     }
+    if (theAlgorithm != 0) {
+	theAlgorithm->setConvergenceTest(theTest);
+    }
     if(theAlgorithm == 0) {
 	theAlgorithm = new NewtonRaphson(*theTest);
     }
@@ -740,6 +786,10 @@ OpenSeesCommands::setVariableAnalysis(bool suppress)
 	theTest = new CTestNormUnbalance(1.0e-6,25,0);
     }
 
+    if (theAlgorithm != 0) {
+	theAlgorithm->setConvergenceTest(theTest);
+    }
+
     if (theAlgorithm == 0) {
       if (!suppress) {
 	opserr << "WARNING analysis VariableTransient - no Algorithm yet specified, \n";
@@ -799,7 +849,6 @@ OpenSeesCommands::setVariableAnalysis(bool suppress)
     if (theEigenSOE != 0) {
 	theTransientAnalysis->setEigenSOE(*theEigenSOE);
     }
-
 }
 
 void
@@ -821,6 +870,9 @@ OpenSeesCommands::setTransientAnalysis(bool suppress)
     }
     if (theTest == 0) {
 	theTest = new CTestNormUnbalance(1.0e-6,25,0);
+    }
+    if (theAlgorithm != 0) {
+	theAlgorithm->setConvergenceTest(theTest);
     }
     if (theAlgorithm == 0) {
       if (!suppress) {
@@ -861,6 +913,26 @@ OpenSeesCommands::setTransientAnalysis(bool suppress)
 	theSOE = new ProfileSPDLinSOE(*theSolver);
     }
 
+    // Get the number of sub-levels and sub-steps
+    OPS_ResetCurrentInputArg(2);
+    int numSubLevels = 0;
+    int numSubSteps = 10;
+    int numData = 1;
+    while (OPS_GetNumRemainingInputArgs() >= 2) {
+        const char* opt = OPS_GetString();
+        if (strcmp(opt, "-numSubLevels") == 0 || strcmp(opt, "numSubLevels") == 0) {
+            if (OPS_GetIntInput(&numData, &numSubLevels) < 0) {
+                opserr << "WARNING analysis Transient - failed to read -numSubLevels <numSubLevels>\n";
+                return;
+            }
+        } else if (strcmp(opt, "-numSubSteps") == 0 || strcmp(opt, "numSubSteps") == 0) {
+            if (OPS_GetIntInput(&numData, &numSubSteps) < 0) {
+                opserr << "WARNING analysis Transient - failed to read -numSubSteps <numSubSteps>\n";
+                return;
+            }
+        }
+    }
+
     theTransientAnalysis = new DirectIntegrationAnalysis(*theDomain,
 							 *theHandler,
 							 *theNumberer,
@@ -868,7 +940,7 @@ OpenSeesCommands::setTransientAnalysis(bool suppress)
 							 *theAlgorithm,
 							 *theSOE,
 							 *theTransientIntegrator,
-							 theTest);
+							 theTest, numSubLevels, numSubSteps);
     if (theEigenSOE != 0) {
 	theTransientAnalysis->setEigenSOE(*theEigenSOE);
     }
@@ -981,7 +1053,6 @@ OpenSeesCommands::wipe()
 
     // wipe CyclicModel
     OPS_clearAllCyclicModel();
-
 }
 
 void
@@ -997,11 +1068,81 @@ OpenSeesCommands::setFileDatabase(const char* filename)
 /////////////////////////////
 //// OpenSees APIs  /// /////
 /////////////////////////////
+static
+void OPS_InvokeMaterialObject(struct matObject* theMat, modelState* theModel, double* strain, double* tang, double* stress, int* isw, int* result)
+{
+    int matType = (int)theMat->theParam[0];
+
+    if (matType == 1) {
+        //  UniaxialMaterial *theMaterial = theUniaxialMaterials[matCount];
+        UniaxialMaterial* theMaterial = (UniaxialMaterial*)theMat->matObjectPtr;
+        if (theMaterial == 0) {
+            *result = -1;
+            return;
+        }
+
+        if (*isw == ISW_COMMIT) {
+            *result = theMaterial->commitState();
+            return;
+        }
+        else if (*isw == ISW_REVERT) {
+            *result = theMaterial->revertToLastCommit();
+            return;
+        }
+        else if (*isw == ISW_REVERT_TO_START) {
+            *result = theMaterial->revertToStart();
+            return;
+        }
+        else if (*isw == ISW_FORM_TANG_AND_RESID) {
+            double matStress = 0.0;
+            double matTangent = 0.0;
+            int res = theMaterial->setTrial(strain[0], matStress, matTangent);
+            stress[0] = matStress;
+            tang[0] = matTangent;
+            *result = res;
+            return;
+        }
+    }
+
+    return;
+}
+
 int OPS_GetNumRemainingInputArgs()
 {
     if (cmds == 0) return 0;
     DL_Interpreter* interp = cmds->getInterpreter();
     return interp->getNumRemainingInputArgs();
+}
+
+int OPS_ResetCommandLine(int nArgs, int cArg, const char** argv)
+{
+    if (cArg == 0) {
+        opserr << "WARNING can't reset to argv[0]\n";
+        return -1;
+    }
+    if (cmds == 0) return 0;
+    DL_Interpreter* interp = cmds->getInterpreter();
+    interp->resetInput(nArgs, cArg, argv);
+    return 0;
+}
+
+int OPS_ResetCurrentInputArg(int cArg)
+{
+    if (cArg == 0) {
+        opserr << "WARNING can't reset to argv[0]\n";
+        return -1;
+    }
+    if (cmds == 0) return 0;
+    DL_Interpreter* interp = cmds->getInterpreter();
+    interp->resetInput(cArg);
+    return 0;
+}
+
+int OPS_Error(char* errorMessage, int length)
+{
+    opserr << errorMessage;
+    opserr << endln;
+    return 0;
 }
 
 int OPS_GetIntInput(int *numData, int*data)
@@ -1089,28 +1230,29 @@ int OPS_SetDoubleDictListOutput(std::map<const char*, std::vector<double>>& data
     return interp->setDouble(data);
 }
 
-
-
-const char * OPS_GetString(void)
+const char* OPS_GetString(void)
 {
     if (cmds == 0) return "Invalid String Input!";
     DL_Interpreter* interp = cmds->getInterpreter();
     const char* res = interp->getString();
-    if (res == 0) {
-	return "Invalid String Input!";
-    }
+    if (res == 0) return "Invalid String Input!";
     return res;
 }
 
-const char * OPS_GetStringFromAll(char* buffer, int len)
+const char* OPS_GetStringFromAll(char* buffer, int len)
 {
     if (cmds == 0) return "Invalid String Input!";
     DL_Interpreter* interp = cmds->getInterpreter();
     const char* res = interp->getStringFromAll(buffer, len);
-    if (res == 0) {
-	return "Invalid String Input!";
-    }
+    if (res == 0) return "Invalid String Input!";
     return res;
+}
+
+void *OPS_GetVoidPtr(void)
+{
+    if (cmds == 0) return nullptr;
+    DL_Interpreter* interp = cmds->getInterpreter();
+    return interp->getVoidPtr();
 }
 
 int OPS_SetString(const char* str)
@@ -1148,6 +1290,510 @@ int OPS_SetStringDictList(std::map<const char*, std::vector<const char*>>& data)
     return interp->setString(data);
 }
 
+int OPS_SetGenericDict(GenericDict& data)
+{
+    if (cmds == 0) return 0;
+    DL_Interpreter* interp = cmds->getInterpreter();
+    return interp->setGenericDict(data);
+}
+
+int OPS_GetNDF()
+{
+    if (cmds == 0) return 0;
+    return cmds->getNDF();
+}
+
+int OPS_GetNDM()
+{
+    if (cmds == 0) return 0;
+    return cmds->getNDM();
+}
+
+extern "C" int OPS_GetNodeCrd(int* nodeTag, int* sizeCrd, double* data)
+{
+    Domain* theDomain = cmds->getDomain();
+    Node* theNode = theDomain->getNode(*nodeTag);
+    if (theNode == 0) {
+        opserr << "OPS_GetNodeCrd - no node with tag " << *nodeTag << endln;
+        return -1;
+    }
+    int size = *sizeCrd;
+    const Vector& crd = theNode->getCrds();
+    if (crd.Size() != size) {
+        opserr << "OPS_GetNodeCrd - crd size mismatch\n";
+        opserr << "Actual crd size is: " << crd.Size() << endln;
+        return -1;
+    }
+    for (int i = 0; i < size; i++)
+        data[i] = crd(i);
+    
+    return 0;
+}
+
+extern "C" int OPS_GetNodeDisp(int* nodeTag, int* sizeData, double* data)
+{
+    Domain* theDomain = cmds->getDomain();
+    Node* theNode = theDomain->getNode(*nodeTag);
+    if (theNode == 0) {
+        opserr << "OPS_GetNodeDisp - no node with tag " << *nodeTag << endln;
+        return -1;
+    }
+    int size = *sizeData;
+    const Vector& disp = theNode->getTrialDisp();
+    if (disp.Size() != size) {
+        opserr << "OPS_GetNodeDisp - crd size mismatch\n";
+        return -1;
+    }
+    for (int i = 0; i < size; i++)
+        data[i] = disp(i);
+    
+    return 0;
+}
+
+extern "C" int OPS_GetNodeVel(int* nodeTag, int* sizeData, double* data)
+{
+    Domain* theDomain = cmds->getDomain();
+    Node* theNode = theDomain->getNode(*nodeTag);
+    if (theNode == 0) {
+        opserr << "OPS_GetNodeVel - no node with tag " << *nodeTag << endln;
+        return -1;
+    }
+    int size = *sizeData;
+    const Vector& vel = theNode->getTrialVel();
+    if (vel.Size() != size) {
+        opserr << "OPS_GetNodeVel - crd size mismatch\n";
+        return -1;
+    }
+    for (int i = 0; i < size; i++)
+        data[i] = vel(i);
+    
+    return 0;
+}
+
+extern "C" int OPS_GetNodeAccel(int* nodeTag, int* sizeData, double* data)
+{
+    Domain* theDomain = cmds->getDomain();
+    Node* theNode = theDomain->getNode(*nodeTag);
+    if (theNode == 0) {
+        opserr << "OPS_GetNodeAccel - no node with tag " << *nodeTag << endln;
+        return -1;
+    }
+    int size = *sizeData;
+    const Vector& accel = theNode->getTrialAccel();
+    if (accel.Size() != size) {
+        opserr << "OPS_GetNodeAccel - accel size mismatch\n";
+        return -1;
+    }
+    for (int i = 0; i < size; i++)
+        data[i] = accel(i);
+    
+    return 0;
+}
+
+extern "C" int OPS_GetNodeIncrDisp(int* nodeTag, int* sizeData, double* data)
+{
+    Domain* theDomain = cmds->getDomain();
+    Node* theNode = theDomain->getNode(*nodeTag);
+    if (theNode == 0) {
+        opserr << "OPS_GetNodeIncrDisp - no node with tag " << *nodeTag << endln;
+        return -1;
+    }
+    int size = *sizeData;
+    const Vector& disp = theNode->getIncrDisp();
+    if (disp.Size() != size) {
+        opserr << "OPS_GetNodeIncrDis - crd size mismatch\n";
+        return -1;
+    }
+    for (int i = 0; i < size; i++)
+        data[i] = disp(i);
+    
+    return 0;
+}
+
+extern "C" int OPS_GetNodeIncrDeltaDisp(int* nodeTag, int* sizeData, double* data)
+{
+    Domain* theDomain = cmds->getDomain();
+    Node* theNode = theDomain->getNode(*nodeTag);
+    if (theNode == 0) {
+        opserr << "OPS_GetNodeIncrDeltaDisp - no node with tag " << *nodeTag << endln;
+        return -1;
+    }
+    int size = *sizeData;
+    const Vector& disp = theNode->getIncrDeltaDisp();
+    if (disp.Size() != size) {
+        opserr << "OPS_GetNodeIncrDis - crd size mismatch\n";
+        return -1;
+    }
+    for (int i = 0; i < size; i++)
+        data[i] = disp(i);
+    
+    return 0;
+}
+
+extern "C"
+matObj* OPS_GetMaterial(int* matTag, int* matType)
+{
+    if (*matType == OPS_UNIAXIAL_MATERIAL_TYPE) {
+        UniaxialMaterial* theUniaxialMaterial = OPS_getUniaxialMaterial(*matTag);
+
+        if (theUniaxialMaterial != 0) {
+
+            UniaxialMaterial* theCopy = theUniaxialMaterial->getCopy();
+            //uniaxialMaterialObjectCount++;
+            //theUniaxialMaterials[uniaxialMaterialObjectCount] = theCopy;
+
+            matObject* theMatObject = new matObject;
+            theMatObject->tag = *matTag;
+            theMatObject->nParam = 1;
+            theMatObject->nState = 0;
+
+            theMatObject->theParam = new double[1];
+            //theMatObject->theParam[0] = uniaxialMaterialObjectCount;
+            theMatObject->theParam[0] = 1; // code for uniaxial material
+
+            theMatObject->tState = 0;
+            theMatObject->cState = 0;
+            theMatObject->matFunctPtr = OPS_InvokeMaterialObject;
+
+            theMatObject->matObjectPtr = theCopy;
+
+            return theMatObject;
+        }
+
+        fprintf(stderr, "getMaterial - no uniaxial material exists with tag %d\n", *matTag);
+        return 0;
+    }
+    else if (*matType == OPS_SECTION_TYPE) {
+        fprintf(stderr, "getMaterial - not yet implemented for Section\n");
+        return 0;
+    }
+    else {
+
+        //    NDMaterial *theNDMaterial = theModelBuilder->getNDMaterial(*matTag);
+
+        //    if (theNDMaterial != 0) 
+          //      theNDMaterial = theNDMaterial->getCopy(matType);
+          //    else {
+          //      fprintf(stderr,"getMaterial - no nd material exists with tag %d\n", *matTag);          
+          //      return 0;
+          //    }
+
+          //    if (theNDMaterial == 0) {
+        //      fprintf(stderr,"getMaterial - material with tag %d cannot deal with %d\n", *matTag, matType);          
+        //      return 0;
+        //    }
+
+        fprintf(stderr, "getMaterial - not yet implemented for nDMaterial\n");
+        return 0;
+    }
+
+    fprintf(stderr, "getMaterial - unknown material type\n");
+    return 0;
+}
+
+extern "C"
+matObj* OPS_GetMaterialType(char* type, int sizeType)
+{
+    // try existing loaded routines
+    MaterialFunction* matFunction = theMaterialFunctions;
+    bool found = false;
+    while (matFunction != NULL && found == false) {
+        if (strcmp(type, matFunction->funcName) == 0) {
+
+            // create a new matObject, set the function ptr & return it
+            matObj* theMatObject = new matObj;
+            theMatObject->matFunctPtr = matFunction->theFunct;
+            //opserr << "matObj *OPS_GetMaterialType() - FOUND " << endln;
+            return theMatObject;
+        }
+        else
+            matFunction = matFunction->next;
+    }
+
+    // try to load new routine from dynamic library in load path
+    matFunct matFunctPtr;
+    void* libHandle;
+
+    int res = getLibraryFunction(type, type, &libHandle, (void**)&matFunctPtr);
+
+    if (res == 0) {
+
+        // add the routine to the list of possible elements
+        char* funcName = new char[strlen(type) + 1];
+        strcpy(funcName, type);
+        matFunction = new MaterialFunction;
+        matFunction->theFunct = matFunctPtr;
+        matFunction->funcName = funcName;
+        matFunction->next = theMaterialFunctions;
+        theMaterialFunctions = matFunction;
+
+        // create a new matObject, set the function ptr & return it
+        matObj* theMatObject = new matObj;
+        //eleObj *theEleObject = (eleObj *)malloc(sizeof( eleObj));;      
+
+        theMatObject->matFunctPtr = matFunction->theFunct;
+        //fprintf(stderr,"getMaterial Address %p\n",theMatObject);
+
+        return theMatObject;
+    }
+
+    return 0;
+}
+
+extern "C"
+limCrvObj* OPS_GetLimitCurveType(char* type, int sizeType)
+{
+    // try existing loaded routines
+    LimitCurveFunction* limCrvFunction = theLimitCurveFunctions;
+    bool found = false;
+    while (limCrvFunction != NULL && found == false) {
+        if (strcmp(type, limCrvFunction->funcName) == 0) {
+
+            // create a new limCrvObject, set the function ptr & return it
+            limCrvObj* theLimCrvObject = new limCrvObj;
+            theLimCrvObject->limCrvFunctPtr = limCrvFunction->theFunct;
+            //opserr << "limCrvObj *OPS_GetLimitCurveType() - FOUND " << endln;
+            return theLimCrvObject;
+        }
+        else
+            limCrvFunction = limCrvFunction->next;
+    }
+
+    // try to load new routine from dynamic library in load path
+    limCrvFunct limCrvFunctPtr;
+    void* libHandle;
+    int res = getLibraryFunction(type, type, &libHandle, (void**)&limCrvFunctPtr);
+
+    if (res == 0)
+    {
+        // add the routine to the list of possible elements
+        char* funcName = new char[strlen(type) + 1];
+        strcpy(funcName, type);
+        limCrvFunction = new LimitCurveFunction;
+        limCrvFunction->theFunct = limCrvFunctPtr;
+        limCrvFunction->funcName = funcName;
+        limCrvFunction->next = theLimitCurveFunctions;
+        theLimitCurveFunctions = limCrvFunction;
+
+        // create a new limCrvObject, set the function ptr & return it    
+        limCrvObj* theLimCrvObject = new limCrvObj;
+        theLimCrvObject->limCrvFunctPtr = limCrvFunction->theFunct;
+        return theLimCrvObject;
+    }
+
+    return 0;
+}
+
+extern "C"
+eleObj* OPS_GetElement(int* eleTag)
+{
+    return 0;
+}
+
+extern "C"
+eleObj* OPS_GetElementType(char* type, int sizeType)
+{
+    // try existing loaded routines
+    ElementFunction* eleFunction = theElementFunctions;
+    bool found = false;
+    while (eleFunction != NULL && found == false) {
+        if (strcmp(type, eleFunction->funcName) == 0) {
+
+            // create a new eleObject, set the function ptr & return it
+            eleObj* theEleObject = new eleObj;
+            theEleObject->eleFunctPtr = eleFunction->theFunct;
+            return theEleObject;
+        }
+        else
+            eleFunction = eleFunction->next;
+    }
+
+    // try to load new routine from dynamic library in load path
+    eleFunct eleFunctPtr;
+    void* libHandle;
+
+    int res = getLibraryFunction(type, type, &libHandle, (void**)&eleFunctPtr);
+
+    if (res == 0) {
+
+        // add the routine to the list of possible elements
+        char* funcName = new char[strlen(type) + 1];
+        strcpy(funcName, type);
+        eleFunction = new ElementFunction;
+        eleFunction->theFunct = eleFunctPtr;
+        eleFunction->funcName = funcName;
+        eleFunction->next = theElementFunctions;
+        theElementFunctions = eleFunction;
+
+        // create a new eleObject, set the function ptr & return it
+        eleObj* theEleObject = new eleObj;
+        //eleObj *theEleObject = (eleObj *)malloc(sizeof( eleObj));;      
+
+        theEleObject->eleFunctPtr = eleFunction->theFunct;
+
+        return theEleObject;
+    }
+
+    return 0;
+}
+
+extern "C"
+int OPS_AllocateMaterial(matObject* theMat)
+{
+    //fprintf(stderr,"allocateMaterial Address %p\n",theMat);
+    if (theMat->nParam > 0)
+        theMat->theParam = new double[theMat->nParam];
+
+    int nState = theMat->nState;
+
+    if (nState > 0) {
+        theMat->cState = new double[nState];
+        theMat->tState = new double[nState];
+        for (int i = 0; i < nState; i++) {
+            theMat->cState[i] = 0;
+            theMat->tState[i] = 0;
+        }
+    }
+    else {
+        theMat->cState = 0;
+        theMat->tState = 0;
+    }
+
+    return 0;
+}
+
+extern "C"
+int OPS_AllocateLimitCurve(limCrvObject* theLimCrv)
+{
+    //fprintf(stderr,"allocateLimitCurve Address %p\n",theLimCrv);
+    if (theLimCrv->nParam > 0)
+        theLimCrv->theParam = new double[theLimCrv->nParam];
+
+    int nState = theLimCrv->nState;
+
+    if (nState > 0) {
+        theLimCrv->cState = new double[nState];
+        theLimCrv->tState = new double[nState];
+        for (int i = 0; i < nState; i++) {
+            theLimCrv->cState[i] = 0;
+            theLimCrv->tState[i] = 0;
+        }
+    }
+    else {
+        theLimCrv->cState = 0;
+        theLimCrv->tState = 0;
+    }
+
+    return 0;
+}
+
+extern "C"
+int OPS_AllocateElement(eleObject* theEle, int* matTags, int* matType)
+{
+    if (theEle->nNode > 0)
+        theEle->node = new int[theEle->nNode];
+
+    if (theEle->nParam > 0)
+        theEle->param = new double[theEle->nParam];
+
+    if (theEle->nState > 0) {
+        theEle->cState = new double[theEle->nState];
+        theEle->tState = new double[theEle->nState];
+    }
+
+    int numMat = theEle->nMat;
+    if (numMat > 0)
+        theEle->mats = new matObject * [numMat];
+
+
+    for (int i = 0; i < numMat; i++) {
+        //opserr << "AllocateElement - matTag " << matTags[i] << "\n"; */
+        matObject* theMat = OPS_GetMaterial(&(matTags[i]), matType);
+        //matObject *theMat = OPS_GetMaterial(&(matTags[i]));
+
+        theEle->mats[i] = theMat;
+    }
+
+    return 0;
+}
+
+extern "C" int
+OPS_InvokeMaterial(eleObject* theEle, int* mat, modelState* model, double* strain, double* stress, double* tang, int* isw)
+{
+    int error = 0;
+
+    matObject* theMat = theEle->mats[*mat];
+    //fprintf(stderr,"invokeMaterial Address %d %d %d\n",*mat, theMat, sizeof(int));
+
+    if (theMat != 0)
+        theMat->matFunctPtr(theMat, model, strain, tang, stress, isw, &error);
+    else
+        error = -1;
+
+    return error;
+}
+
+extern "C" int
+OPS_InvokeMaterialDirectly(matObject** theMat, modelState* model, double* strain, double* stress, double* tang, int* isw)
+{
+    int error = 0;
+    //fprintf(stderr,"invokeMaterialDirectly Address %d %d %d\n",theMat, sizeof(int), *theMat);
+    if (*theMat != 0)
+        (*theMat)->matFunctPtr(*theMat, model, strain, tang, stress, isw, &error);
+    else
+        error = -1;
+
+    return error;
+}
+
+extern "C" int
+OPS_InvokeMaterialDirectly2(matObject* theMat, modelState* model, double* strain, double* stress, double* tang, int* isw)
+{
+    int error = 0;
+    //fprintf(stderr,"invokeMaterialDirectly Address %d %d\n",theMat, sizeof(int));
+    if (theMat != 0)
+        theMat->matFunctPtr(theMat, model, strain, tang, stress, isw, &error);
+    else
+        error = -1;
+
+    return error;
+}
+
+UniaxialMaterial* OPS_GetUniaxialMaterial(int matTag)
+{
+    return OPS_getUniaxialMaterial(matTag);
+}
+
+LimitCurve*
+OPS_GetLimitCurve(int limCrvTag)
+{
+    return OPS_getLimitCurve(limCrvTag);
+}
+
+NDMaterial*
+OPS_GetNDMaterial(int matTag)
+{
+    return OPS_getNDMaterial(matTag);
+}
+
+SectionForceDeformation*
+OPS_GetSectionForceDeformation(int secTag)
+{
+    return OPS_getSectionForceDeformation(secTag);
+}
+
+CrdTransf*
+OPS_GetCrdTransf(int crdTag)
+{
+    return OPS_getCrdTransf(crdTag);
+}
+
+FrictionModel*
+OPS_GetFrictionModel(int frnTag)
+{
+    return OPS_getFrictionModel(frnTag);
+}
+
 Domain* OPS_GetDomain(void)
 {
     if (cmds == 0) return 0;
@@ -1159,8 +1805,19 @@ ReliabilityDomain* OPS_GetReliabilityDomain(void) {
   return cmds->getReliabilityDomain();
 }
 
-AnalysisModel**
-OPS_GetAnalysisModel(void)
+FE_Datastore* OPS_GetFEDatastore(void)
+{
+    if (cmds == 0) return 0;
+    return cmds->getDatabase();
+}
+
+SimulationInformation* OPS_GetSimulationInfo(void)
+{
+    if (cmds == 0) return 0;
+    return cmds->getSimulationInformation();
+}
+
+AnalysisModel** OPS_GetAnalysisModel(void)
 {
     if (cmds == 0) return 0;
     return cmds->getAnalysisModel();
@@ -1222,47 +1879,39 @@ ConvergenceTest** OPS_GetTest(void) {
     return cmds->getCTestPointer();
 }
 
-int OPS_GetNDF()
+bool* OPS_builtModel(void)
 {
+    static bool bltMdl = 0;
     if (cmds == 0) return 0;
-    return cmds->getNDF();
-}
-
-int OPS_GetNDM()
-{
-    if (cmds == 0) return 0;
-    return cmds->getNDM();
-}
-
-int OPS_Error(char *errorMessage, int length)
-{
-    opserr << errorMessage;
-    opserr << endln;
-    return 0;
-}
-
-int OPS_ResetCurrentInputArg(int cArg)
-{
-    if (cArg == 0) {
-	opserr << "WARNING can't reset to argv[0]\n";
-	return -1;
+    bltMdl = cmds->getBuiltModel();
+    int numdata = 1;
+    if (OPS_SetIntOutput(&numdata, (int*) &bltMdl, true) < 0) {
+        opserr << "WARNING failed to set output\n";
+        return 0;
     }
-    if (cmds == 0) return 0;
-    DL_Interpreter* interp = cmds->getInterpreter();
-    interp->resetInput(cArg);
-    return 0;
+
+    return &bltMdl;
 }
 
-UniaxialMaterial *OPS_GetUniaxialMaterial(int matTag)
+int* OPS_GetNumEigen(void)
 {
-    return OPS_getUniaxialMaterial(matTag);
+    static int numEigen = 0;
+    if (cmds == 0) return 0;
+    numEigen = cmds->getNumEigen();
+    int numdata = 1;
+    if (OPS_SetIntOutput(&numdata, &numEigen, true) < 0) {
+        opserr << "WARNING failed to set output\n";
+        return 0;
+    }
+
+    return &numEigen;
 }
 
 int OPS_wipe()
 {
     // wipe
     if (cmds != 0) {
-	cmds->wipe();
+	    cmds->wipe();
     }
 
     return 0;
@@ -1272,7 +1921,7 @@ int OPS_wipeAnalysis()
 {
     // wipe analysis
     if (cmds != 0) {
-	cmds->wipeAnalysis();
+	    cmds->wipeAnalysis();
     }
 
     return 0;
@@ -1340,6 +1989,8 @@ int OPS_model()
 	cmds->setNDF(ndf);
 	cmds->setNDM(ndm);
     }
+
+    cmds->setBuiltModel(true);
 
     return 0;
 }
@@ -1426,6 +2077,15 @@ int OPS_System()
 	}
 
 
+    } else if (strcmp(type,"PythonSparse") == 0) {
+
+        LinearSOE *pythonSOE = static_cast<LinearSOE *>(OPS_SparsePythonSolver());
+        if (pythonSOE == nullptr) {
+            return -1;
+        }
+
+        theSOE = pythonSOE;
+
     } else if ((strcmp(type,"SparseGeneral") == 0) ||
 	       (strcmp(type,"SuperLU") == 0) ||
 	       (strcmp(type,"SparseGEN") == 0)) {
@@ -1451,6 +2111,10 @@ int OPS_System()
 #ifdef _MUMPS
     } else if (strcmp(type,"Mumps") == 0) {
         theSOE = (LinearSOE*)OPS_MumpsSolver();
+#endif
+#ifdef _ITPACK
+    } else if (strcmp(type,"Itpack") == 0) {
+        theSOE = (LinearSOE*)OPS_ItpackLinSolver();
 #endif
     } else {
     	opserr<<"WARNING unknown system type "<<type<<"\n";
@@ -1814,6 +2478,10 @@ int OPS_Algorithm()
     } else if (strcmp(type, "ModifiedNewton") == 0) {
 	theAlgo = (EquiSolnAlgo*) OPS_ModifiedNewton();
 
+    } else if ((strcmp(type, "NewtonHallM") == 0)
+	       || (strcmp(type, "NewtonHall") == 0)) {
+	theAlgo = (EquiSolnAlgo*) OPS_NewtonHallM();
+
     } else if (strcmp(type, "KrylovNewton") == 0) {
 	theAlgo = (EquiSolnAlgo*) OPS_KrylovNewton();
 
@@ -2050,6 +2718,9 @@ int OPS_eigenAnalysis()
     bool findSmallest = true;
 
     // Check type of eigenvalue analysis
+    bool pythonSparseEigen = false;
+    EigenSOE *providedEigenSOE = 0;
+
     while (OPS_GetNumRemainingInputArgs() > 1) {
 
 	const char* type = OPS_GetString();
@@ -2079,18 +2750,31 @@ int OPS_eigenAnalysis()
 		 (strcmp(type,"-symmBandLapackEigen") == 0))
 	    typeSolver = EigenSOE_TAGS_SymBandEigenSOE;
 
+	else if ((strcmp(type,"symmGenLapack") == 0) ||
+		 (strcmp(type,"-symmGenLapack") == 0) ||
+		 (strcmp(type,"symmGenLapackEigen") == 0) ||
+		 (strcmp(type,"-symmGenLapackEigen") == 0))
+	    typeSolver = EigenSOE_TAGS_SymmGeneralizedEigenSOE;	
+
     else if ((strcmp(type, "fullGenLapack") == 0) ||
                 (strcmp(type, "-fullGenLapack") == 0) ||
                 (strcmp(type, "fullGenLapackEigen") == 0) ||
                 (strcmp(type, "-fullGenLapackEigen") == 0)) {
 	    if (!warning_displayed) {
-            opserr << "WARNING - the 'fullGenLapack' eigen solver is VERY SLOW. Consider using the default eigen solver.";
+            opserr << "\nWARNING - the 'fullGenLapack' eigen solver is VERY SLOW. Consider using the default eigen solver.\n";
             warning_displayed = true;
 		}
         typeSolver = EigenSOE_TAGS_FullGenEigenSOE;
     }
 
-    else {
+    else if (strcmp(type,"PythonSparse") == 0) {
+        pythonSparseEigen = true;
+        typeSolver = EigenSOE_TAGS_SparsePythonCompressedEigenSOE;
+        // will be updated to the actual type of the eigen solver
+        // after the EigenSOE is created
+        break;
+
+    } else {
         opserr << "eigen - unknown option specified " << type
                 << endln;
     }
@@ -2110,8 +2794,17 @@ int OPS_eigenAnalysis()
     }
     cmds->setNumEigen(numEigen);
 
+    if (pythonSparseEigen) {
+        void *eigenSOEPtr = OPS_SparsePythonEigenSolver();
+        if (eigenSOEPtr == 0) {
+            return -1;
+        }
+        providedEigenSOE = static_cast<EigenSOE *>(eigenSOEPtr);
+        typeSolver = providedEigenSOE->getClassTag();
+    }
+
     // set eigen soe
-    if (cmds->eigen(typeSolver,shift,generalizedAlgo,findSmallest) < 0) {
+    if (cmds->eigen(typeSolver,shift,generalizedAlgo,findSmallest, providedEigenSOE) < 0) {
 	opserr<<"WANRING failed to do eigen analysis\n";
 	return -1;
     }
@@ -2167,20 +2860,45 @@ int OPS_printA()
     OPS_Stream *output = &opserr;
 
     bool ret = false;
-    if (OPS_GetNumRemainingInputArgs() > 0) {
-	const char* flag = OPS_GetString();
-
-	if ((strcmp(flag,"file") == 0) || (strcmp(flag,"-file") == 0)) {
-
-	    const char* filename = OPS_GetString();
-	    if (outputFile.setFile(filename) != 0) {
-		opserr << "printA <filename> .. - failed to open file: " << filename << endln;
-		return -1;
-	    }
-	    output = &outputFile;
-	} else if((strcmp(flag,"ret") == 0) || (strcmp(flag,"-ret") == 0)) {
-	    ret = true;
-	}
+    bool fileSparse = false;
+    int baseIndex = 0;
+    int precision = 6;
+    while (OPS_GetNumRemainingInputArgs() > 0) {
+        const char* flag = OPS_GetString();
+        if ((strcmp(flag,"file") == 0) || (strcmp(flag,"-file") == 0)) {
+            const char* filename = OPS_GetString();
+            if (strcmp(filename, "Invalid String Input!") == 0) {
+                opserr << "WARNING: printA - filename is not a valid string\n";
+                return -1;
+            }
+            if (outputFile.setFile(filename) != 0) {
+                opserr << "printA <filename> .. - failed to open file: " << filename << endln;
+                return -1;
+            }
+            output = &outputFile;
+        } else if((strcmp(flag,"ret") == 0) || (strcmp(flag,"-ret") == 0)) {
+            ret = true;
+        } else if ((strcmp(flag,"sparse") == 0) || (strcmp(flag,"-sparse") == 0)) {
+            fileSparse = true;
+            if (OPS_GetNumRemainingInputArgs() > 0) {
+                int numdata = 1;
+                if (OPS_GetIntInput(&numdata, &baseIndex) < 0) {
+                    opserr << "WARNING: printA - failed to read -sparse <baseIndex>\n";
+                    return -1;
+                }
+            }
+        } else if ((strcmp(flag,"precision") == 0) || (strcmp(flag,"-precision") == 0)) {
+            if (OPS_GetNumRemainingInputArgs() > 0) {
+                int numdata = 1;
+                if ((OPS_GetIntInput(&numdata, &precision) < 0) || (precision < 0) || (precision > 16)) {
+                    opserr << "WARNING: printA - failed to read precision\n";
+                    return -1;
+                }
+            }
+        } else {
+            opserr << "WARNING: printA - unknown flag: " << flag << endln;
+            return -1;
+        }
     }
 
     LinearSOE* theSOE = cmds->getSOE();
@@ -2188,41 +2906,95 @@ int OPS_printA()
     TransientIntegrator* theTransientIntegrator = cmds->getTransientIntegrator();
 
     if (theSOE != 0) {
-	if (theStaticIntegrator != 0) {
-	    theStaticIntegrator->formTangent();
-	} else if (theTransientIntegrator != 0) {
-	    theTransientIntegrator->formTangent(0);
-	}
-
-    PFEMLinSOE* pfemsoe = dynamic_cast<PFEMLinSOE*>(theSOE);
-    if (pfemsoe != 0) {
-        pfemsoe->saveK(*output);
-        outputFile.close();
-        return 0;
-    }
-
-	Matrix *A = const_cast<Matrix*>(theSOE->getA());
-	if (A != 0) {
-	    if (ret) {
-		int size = A->noRows() * A->noCols();
-		if (size >0) {
-		    double& ptr = (*A)(0,0);
-		    if (OPS_SetDoubleOutput(&size, &ptr, false) < 0) {
-			opserr << "WARNING: printA - failed to set output\n";
-			return -1;
-		    }
-		}
-	    } else {
-		*output << *A;
-	    }
-	} else {
-        int size = 0;
-        double *ptr = 0;
-        if (OPS_SetDoubleOutput(&size, ptr, false) < 0) {
-            opserr << "WARNING: printA - failed to set output\n";
-            return -1;
+        output->setPrecision(precision);
+        if (theStaticIntegrator != 0) {
+            theStaticIntegrator->formTangent();
+        } else if (theTransientIntegrator != 0) {
+            theTransientIntegrator->formTangent(0);
         }
-	}
+
+        PFEMLinSOE* pfemsoe = dynamic_cast<PFEMLinSOE*>(theSOE);
+        if (pfemsoe != 0) {
+            pfemsoe->saveK(*output);
+            outputFile.close();
+            return 0;
+        }
+
+        if (fileSparse) {
+            if (!ret) {
+                // Write Matrix Market header
+                const char* mm_comment = (output == &opserr) ? "%%" : "%";
+
+                if (baseIndex == 1) {
+                    *output << mm_comment << mm_comment << "MatrixMarket matrix coordinate real general\n";
+                } else {
+                    *output << mm_comment << mm_comment << "Sparse matrix in COO format\n";
+                }
+                *output << mm_comment << " First non-commented line contains the number of rows, columns, and non-zero elements\n";
+                *output << mm_comment << " The remaining lines contain the indices and values of the non-zero elements\n";
+                *output << mm_comment << " Indices are " << baseIndex << "-based\n";
+                *output << mm_comment << " (i.e. A(" << baseIndex << "," << baseIndex << ") is the first element)\n";
+                int result = theSOE->saveSparseA(*output, baseIndex);
+                outputFile.close();
+                if (result != 0) {
+                    opserr << "WARNING: printA -sparse failed to save sparse matrix" << endln;
+                    opserr << "The selected system type may not support sparse matrix output" << endln;
+                    return -1;
+                }
+                // Return 0 to indicate success
+                int numdata = 1;
+                if (OPS_SetIntOutput(&numdata, &result, true) < 0) {
+                    opserr << "WARNING: printA - failed to set output\n";
+                    return -1;
+                }
+                return result;
+            } else {
+                // Support sparse matrix with -ret flag using GenericDict
+                std::vector<int> rowIndices, colIndices;
+                std::vector<double> values;
+                int result = theSOE->getSparseA(rowIndices, colIndices, values, baseIndex);
+                if (result != 0) {
+                    opserr << "WARNING: printA -sparse -ret failed to get sparse matrix data" << endln;
+                    opserr << "The selected system type may not support sparse matrix output" << endln;
+                    return -1;
+                }
+                
+                // Build generic dictionary and return
+                GenericDict dict;
+                dict["rowIndices"] = rowIndices;
+                dict["colIndices"] = colIndices;
+                dict["values"] = values;
+                
+                if (OPS_SetGenericDict(dict) < 0) {
+                    opserr << "WARNING: printA -sparse -ret failed to set output" << endln;
+                    return -1;
+                }
+                return 0;
+            }
+        }
+
+        Matrix *A = const_cast<Matrix*>(theSOE->getA());
+        if (A != 0) {
+            if (ret) {
+                int size = A->noRows() * A->noCols();
+                if (size >0) {
+                    double& ptr = (*A)(0,0);
+                    if (OPS_SetDoubleOutput(&size, &ptr, false) < 0) {
+                        opserr << "WARNING: printA - failed to set output\n";
+                        return -1;
+                    }
+                }
+            } else {
+                *output << *A;
+            }
+        } else {
+            int size = 0;
+            double *ptr = 0;
+            if (OPS_SetDoubleOutput(&size, ptr, false) < 0) {
+                opserr << "WARNING: printA - failed to set output\n";
+                return -1;
+            }
+        }
     } else {
         int size = 0;
         double *ptr = 0;
@@ -2234,6 +3006,16 @@ int OPS_printA()
 
     // close the output file
     outputFile.close();
+    
+    // Return 0 to indicate success when not using -ret flag
+    if (!ret) {
+        int result = 0;
+        int numdata = 1;
+        if (OPS_SetIntOutput(&numdata, &result, true) < 0) {
+            opserr << "WARNING: printA - failed to set output\n";
+            return -1;
+        }
+    }
 
     return 0;
 }
@@ -2465,395 +3247,6 @@ int OPS_printModel()
     // close the output file
     outputFile.close();
     return res;
-}
-
-void* OPS_KrylovNewton()
-{
-    if (cmds == 0) return 0;
-    int incrementTangent = CURRENT_TANGENT;
-    int iterateTangent = CURRENT_TANGENT;
-    int maxDim = 3;
-    while (OPS_GetNumRemainingInputArgs() > 0) {
-	const char* flag = OPS_GetString();
-
-	if (strcmp(flag,"-iterate") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-	    const char* flag2 = OPS_GetString();
-
-	    if (strcmp(flag2,"current") == 0) {
-		iterateTangent = CURRENT_TANGENT;
-	    }
-	    if (strcmp(flag2,"initial") == 0) {
-		iterateTangent = INITIAL_TANGENT;
-	    }
-	    if (strcmp(flag2,"noTangent") == 0) {
-		iterateTangent = NO_TANGENT;
-	    }
-	} else if (strcmp(flag,"-increment") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-	    const char* flag2 = OPS_GetString();
-
-	    if (strcmp(flag2,"current") == 0) {
-		incrementTangent = CURRENT_TANGENT;
-	    }
-	    if (strcmp(flag2,"initial") == 0) {
-		incrementTangent = INITIAL_TANGENT;
-	    }
-	    if (strcmp(flag2,"noTangent") == 0) {
-		incrementTangent = NO_TANGENT;
-	    }
-	} else if (strcmp(flag,"-maxDim") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-
-	    maxDim = atoi(flag);
-	    int numdata = 1;
-	    if (OPS_GetIntInput(&numdata, &maxDim) < 0) {
-		opserr<< "WARNING KrylovNewton failed to read maxDim\n";
-		return 0;
-	    }
-	}
-    }
-
-    ConvergenceTest* theTest = cmds->getCTest();
-    if (theTest == 0) {
-      opserr << "ERROR: No ConvergenceTest yet specified\n";
-      return 0;
-    }
-
-    Accelerator *theAccel;
-    theAccel = new KrylovAccelerator(maxDim, iterateTangent);
-
-    return new AcceleratedNewton(*theTest, theAccel, incrementTangent);
-}
-
-void* OPS_RaphsonNewton()
-{
-    if (cmds == 0) return 0;
-    int incrementTangent = CURRENT_TANGENT;
-    int iterateTangent = CURRENT_TANGENT;
-
-    while (OPS_GetNumRemainingInputArgs() > 0) {
-	const char* flag = OPS_GetString();
-
-	if (strcmp(flag,"-iterate") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-	    const char* flag2 = OPS_GetString();
-
-	    if (strcmp(flag2,"current") == 0) {
-		iterateTangent = CURRENT_TANGENT;
-	    }
-	    if (strcmp(flag2,"initial") == 0) {
-		iterateTangent = INITIAL_TANGENT;
-	    }
-	    if (strcmp(flag2,"noTangent") == 0) {
-		iterateTangent = NO_TANGENT;
-	    }
-	} else if (strcmp(flag,"-increment") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-	    const char* flag2 = OPS_GetString();
-
-	    if (strcmp(flag2,"current") == 0) {
-		incrementTangent = CURRENT_TANGENT;
-	    }
-	    if (strcmp(flag2,"initial") == 0) {
-		incrementTangent = INITIAL_TANGENT;
-	    }
-	    if (strcmp(flag2,"noTangent") == 0) {
-		incrementTangent = NO_TANGENT;
-	    }
-	}
-    }
-
-    ConvergenceTest* theTest = cmds->getCTest();
-    if (theTest == 0) {
-      opserr << "ERROR: No ConvergenceTest yet specified\n";
-      return 0;
-    }
-
-    Accelerator *theAccel;
-    theAccel = new RaphsonAccelerator(iterateTangent);
-
-    return new AcceleratedNewton(*theTest, theAccel, incrementTangent);
-}
-
-void* OPS_MillerNewton()
-{
-    if (cmds == 0) return 0;
-    int incrementTangent = CURRENT_TANGENT;
-    int iterateTangent = CURRENT_TANGENT;
-    int maxDim = 3;
-    while (OPS_GetNumRemainingInputArgs() > 0) {
-	const char* flag = OPS_GetString();
-
-	if (strcmp(flag,"-iterate") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-	    const char* flag2 = OPS_GetString();
-
-	    if (strcmp(flag2,"current") == 0) {
-		iterateTangent = CURRENT_TANGENT;
-	    }
-	    if (strcmp(flag2,"initial") == 0) {
-		iterateTangent = INITIAL_TANGENT;
-	    }
-	    if (strcmp(flag2,"noTangent") == 0) {
-		iterateTangent = NO_TANGENT;
-	    }
-	} else if (strcmp(flag,"-increment") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-	    const char* flag2 = OPS_GetString();
-
-	    if (strcmp(flag2,"current") == 0) {
-		incrementTangent = CURRENT_TANGENT;
-	    }
-	    if (strcmp(flag2,"initial") == 0) {
-		incrementTangent = INITIAL_TANGENT;
-	    }
-	    if (strcmp(flag2,"noTangent") == 0) {
-		incrementTangent = NO_TANGENT;
-	    }
-	} else if (strcmp(flag,"-maxDim") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-
-	    maxDim = atoi(flag);
-	    int numdata = 1;
-	    if (OPS_GetIntInput(&numdata, &maxDim) < 0) {
-		opserr<< "WARNING KrylovNewton failed to read maxDim\n";
-		return 0;
-	    }
-	}
-    }
-
-    ConvergenceTest* theTest = cmds->getCTest();
-    if (theTest == 0) {
-      opserr << "ERROR: No ConvergenceTest yet specified\n";
-      return 0;
-    }
-
-    Accelerator *theAccel = 0;
-    return new AcceleratedNewton(*theTest, theAccel, incrementTangent);
-}
-
-void* OPS_SecantNewton()
-{
-    if (cmds == 0) return 0;
-    int incrementTangent = CURRENT_TANGENT;
-    int iterateTangent = CURRENT_TANGENT;
-    int maxDim = 3;
-    int numTerms = 2;
-    bool cutOut = false;
-    double R[2];
-    while (OPS_GetNumRemainingInputArgs() > 0) {
-	const char* flag = OPS_GetString();
-
-	if (strcmp(flag,"-iterate") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-	    const char* flag2 = OPS_GetString();
-
-	    if (strcmp(flag2,"current") == 0) {
-		iterateTangent = CURRENT_TANGENT;
-	    }
-	    if (strcmp(flag2,"initial") == 0) {
-		iterateTangent = INITIAL_TANGENT;
-	    }
-	    if (strcmp(flag2,"noTangent") == 0) {
-		iterateTangent = NO_TANGENT;
-	    }
-	} else if (strcmp(flag,"-increment") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-	    const char* flag2 = OPS_GetString();
-
-	    if (strcmp(flag2,"current") == 0) {
-		incrementTangent = CURRENT_TANGENT;
-	    }
-	    if (strcmp(flag2,"initial") == 0) {
-		incrementTangent = INITIAL_TANGENT;
-	    }
-	    if (strcmp(flag2,"noTangent") == 0) {
-		incrementTangent = NO_TANGENT;
-	    }
-	} else if (strcmp(flag,"-maxDim") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-
-	    int numdata = 1;
-	    if (OPS_GetIntInput(&numdata, &maxDim) < 0) {
-		opserr<< "WARNING SecantNewton failed to read maxDim\n";
-		return 0;
-	    }
-	} else if (strcmp(flag,"-numTerms") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-
-	    int numdata = 1;
-	    if (OPS_GetIntInput(&numdata, &numTerms) < 0) {
-		opserr<< "WARNING SecantNewton failed to read maxDim\n";
-		return 0;
-	    }
-	} else if ((strcmp(flag,"-cutOut") == 0 || strcmp(flag,"-cutout") == 0)
-		   && OPS_GetNumRemainingInputArgs() > 1) {
-	  int numdata = 2;
-	  if (OPS_GetDoubleInput(&numdata, R) < 0) {
-	    opserr << "WARNING SecantNewton failed to read cutOut values R1 and R2" << endln;
-	    return 0;
-	  }
-	  cutOut = true;
-	}
-    }
-
-    ConvergenceTest* theTest = cmds->getCTest();
-    if (theTest == 0) {
-      opserr << "ERROR: No ConvergenceTest yet specified\n";
-      return 0;
-    }
-
-    Accelerator *theAccel = 0;
-    if (numTerms <= 1)
-      if (cutOut)
-	theAccel = new SecantAccelerator1(maxDim, iterateTangent, R[0], R[1]);
-      else
-	theAccel = new SecantAccelerator1(maxDim, iterateTangent);
-    if (numTerms >= 3)
-      if (cutOut)
-	theAccel = new SecantAccelerator3(maxDim, iterateTangent, R[0], R[1]);
-      else
-	theAccel = new SecantAccelerator3(maxDim, iterateTangent);
-    if (numTerms == 2)
-      if (cutOut)
-	theAccel = new SecantAccelerator2(maxDim, iterateTangent, R[0], R[1]);
-      else
-	theAccel = new SecantAccelerator2(maxDim, iterateTangent);            
-
-    return new AcceleratedNewton(*theTest, theAccel, incrementTangent);
-}
-
-void* OPS_PeriodicNewton()
-{
-    if (cmds == 0) return 0;
-    int incrementTangent = CURRENT_TANGENT;
-    int iterateTangent = CURRENT_TANGENT;
-    int maxDim = 3;
-    while (OPS_GetNumRemainingInputArgs() > 0) {
-	const char* flag = OPS_GetString();
-
-	if (strcmp(flag,"-iterate") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-	    const char* flag2 = OPS_GetString();
-
-	    if (strcmp(flag2,"current") == 0) {
-		iterateTangent = CURRENT_TANGENT;
-	    }
-	    if (strcmp(flag2,"initial") == 0) {
-		iterateTangent = INITIAL_TANGENT;
-	    }
-	    if (strcmp(flag2,"noTangent") == 0) {
-		iterateTangent = NO_TANGENT;
-	    }
-	} else if (strcmp(flag,"-increment") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-	    const char* flag2 = OPS_GetString();
-
-	    if (strcmp(flag2,"current") == 0) {
-		incrementTangent = CURRENT_TANGENT;
-	    }
-	    if (strcmp(flag2,"initial") == 0) {
-		incrementTangent = INITIAL_TANGENT;
-	    }
-	    if (strcmp(flag2,"noTangent") == 0) {
-		incrementTangent = NO_TANGENT;
-	    }
-	} else if (strcmp(flag,"-maxDim") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-
-	    maxDim = atoi(flag);
-	    int numdata = 1;
-	    if (OPS_GetIntInput(&numdata, &maxDim) < 0) {
-		opserr<< "WARNING KrylovNewton failed to read maxDim\n";
-		return 0;
-	    }
-	}
-    }
-
-    ConvergenceTest* theTest = cmds->getCTest();
-    if (theTest == 0) {
-      opserr << "ERROR: No ConvergenceTest yet specified\n";
-      return 0;
-    }
-
-    Accelerator *theAccel;
-    theAccel = new PeriodicAccelerator(maxDim, iterateTangent);
-
-    return new AcceleratedNewton(*theTest, theAccel, incrementTangent);
-}
-
-void* OPS_NewtonLineSearch()
-{
-    if (cmds == 0) return 0;
-    ConvergenceTest* theTest = cmds->getCTest();
-
-    if (theTest == 0) {
-	opserr << "ERROR: No ConvergenceTest yet specified\n";
-	return 0;
-    }
-
-    // set some default variable
-    double tol        = 0.8;
-    int    maxIter    = 10;
-    double maxEta     = 10.0;
-    double minEta     = 0.1;
-    int    pFlag      = 1;
-    int    typeSearch = 0;
-
-    int numdata = 1;
-
-    while (OPS_GetNumRemainingInputArgs() > 0) {
-	const char* flag = OPS_GetString();
-
-	if (strcmp(flag, "-tol") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-
-	    if (OPS_GetDoubleInput(&numdata, &tol) < 0) {
-		opserr << "WARNING NewtonLineSearch failed to read tol\n";
-		return 0;
-	    }
-
-	} else if (strcmp(flag, "-maxIter") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-
-	    if (OPS_GetIntInput(&numdata, &maxIter) < 0) {
-		opserr << "WARNING NewtonLineSearch failed to read maxIter\n";
-		return 0;
-	    }
-
-	} else if (strcmp(flag, "-pFlag") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-
-	    if (OPS_GetIntInput(&numdata, &pFlag) < 0) {
-		opserr << "WARNING NewtonLineSearch failed to read pFlag\n";
-		return 0;
-	    }
-
-	} else if (strcmp(flag, "-minEta") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-
-	    if (OPS_GetDoubleInput(&numdata, &minEta) < 0) {
-		opserr << "WARNING NewtonLineSearch failed to read minEta\n";
-		return 0;
-	    }
-
-	} else if (strcmp(flag, "-maxEta") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-
-	    if (OPS_GetDoubleInput(&numdata, &maxEta) < 0) {
-		opserr << "WARNING NewtonLineSearch failed to read maxEta\n";
-		return 0;
-	    }
-
-	} else if (strcmp(flag, "-type") == 0 && OPS_GetNumRemainingInputArgs()>0) {
-	    const char* flag2 = OPS_GetString();
-
-	    if (strcmp(flag2, "Bisection") == 0)
-		typeSearch = 1;
-	    else if (strcmp(flag2, "Secant") == 0)
-		typeSearch = 2;
-	    else if (strcmp(flag2, "RegulaFalsi") == 0)
-		typeSearch = 3;
-	    else if (strcmp(flag2, "LinearInterpolated") == 0)
-		typeSearch = 3;
-	    else if (strcmp(flag2, "InitialInterpolated") == 0)
-		typeSearch = 0;
-	}
-    }
-
-    LineSearch *theLineSearch = 0;
-    if (typeSearch == 0)
-	theLineSearch = new InitialInterpolatedLineSearch(tol, maxIter, minEta, maxEta, pFlag);
-
-    else if (typeSearch == 1)
-	theLineSearch = new BisectionLineSearch(tol, maxIter, minEta, maxEta, pFlag);
-    else if (typeSearch == 2)
-	theLineSearch = new SecantLineSearch(tol, maxIter, minEta, maxEta, pFlag);
-    else if (typeSearch == 3)
-	theLineSearch = new RegulaFalsiLineSearch(tol, maxIter, minEta, maxEta, pFlag);
-
-    return new NewtonLineSearch(*theTest, theLineSearch);
 }
 
 int OPS_getCTestNorms()

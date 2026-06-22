@@ -41,6 +41,10 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #ifndef PythonWrapper_h
 #define PythonWrapper_h
 
+#ifdef _WIN32
+#include <corecrt.h>
+#endif
+
 #ifdef _DEBUG
 #undef _DEBUG
 #include <Python.h>
@@ -51,6 +55,7 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 #include <vector>
 #include <map>
+#include "GenericDict.h"
 
 class PythonWrapper
 {
@@ -88,6 +93,7 @@ public:
     void setOutputs(std::vector<std::vector<const char*>> &data);
     void setOutputs(std::map<const char*, const char*>& data);
     void setOutputs(std::map<const char*, std::vector<const char*>>& data);
+    void setGenericDictOutput(GenericDict& data);
     PyObject* getResults();
 
 private:

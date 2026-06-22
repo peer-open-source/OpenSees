@@ -25,8 +25,12 @@
 #ifndef TclWrapper_h
 #define TclWrapper_h
 
-#include <OPS_Globals.h>
 #include <tcl.h>
+#include <OPS_Globals.h>
+#include "GenericDict.h"
+
+#include <vector>
+#include <map>
 
 class TclWrapper
 {
@@ -53,6 +57,17 @@ public:
     void setOutputs(Tcl_Interp* interp, int* data, int numArgs);
     void setOutputs(Tcl_Interp* interp, double* data, int numArgs);
     void setOutputs(Tcl_Interp* interp, const char* str);
+    void setOutputs(Tcl_Interp* interp, std::vector<std::vector<int>>& data);
+    void setOutputs(Tcl_Interp* interp, std::map<const char*, int>& data);
+    void setOutputs(Tcl_Interp* interp, std::map<const char*, std::vector<int>>& data);
+    void setOutputs(Tcl_Interp* interp, std::vector<std::vector<double>>& data);
+    void setOutputs(Tcl_Interp* interp, std::map<const char*, double>& data);
+    void setOutputs(Tcl_Interp* interp, std::map<const char*, std::vector<double>>& data);
+    void setOutputs(Tcl_Interp* interp, std::vector<const char*>& data);
+    void setOutputs(Tcl_Interp* interp, std::vector<std::vector<const char*>>& data);
+    void setOutputs(Tcl_Interp* interp, std::map<const char*, const char*>& data);
+    void setOutputs(Tcl_Interp* interp, std::map<const char*, std::vector<const char*>>& data);
+    void setGenericDictOutput(Tcl_Interp* interp, GenericDict& data);
 
 private:
 
@@ -62,4 +77,5 @@ private:
     int numberArgs;
 
 };
+
 #endif

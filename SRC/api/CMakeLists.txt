@@ -4,30 +4,31 @@
 #                Pacific Earthquake Engineering Research Center
 #
 #==============================================================================
-add_library(OPS_Api OBJECT)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_library(OPS_Api OBJECT)
+  target_sources(OPS_Api PRIVATE win32Functions.cpp)
+  target_include_directories(OPS_Api PUBLIC ${CMAKE_CURRENT_LIST_DIR})
+else()
+  # Header-only on Unix; OBJECT needs at least one source file.
+  add_library(OPS_Api INTERFACE)
+  target_include_directories(OPS_Api INTERFACE ${CMAKE_CURRENT_LIST_DIR})
+endif()
 
 target_sources(OPS_InterpTcl
-  PRIVATE
-    elementAPI_TCL.cpp
-    packages.cpp
+    PRIVATE
+        elementAPI_TCL.cpp
+        packages.cpp
+)
+
+target_sources(OpenSeesPy
+    PRIVATE
+        packages.cpp
 )
 
 target_sources(OPS_Api
-    PUBLIC
-        #elementAPI_Dummy.cpp
-        #win32Functions.cpp
-    PUBLIC
-        elementAPI.h
-	#packages.h
+  INTERFACE
+    elementAPI.h
+    packages.h
+    GenericDict.h
 )
-
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-target_sources(OPS_Api PUBLIC
-        win32Functions.cpp
-)
-
-endif()
-
-target_include_directories(OPS_Api PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 

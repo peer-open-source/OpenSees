@@ -90,6 +90,12 @@ DL_Interpreter::getString()
     return 0;
 }
 
+void*
+DL_Interpreter::getVoidPtr()
+{
+    return 0;
+}
+
 const char*
 DL_Interpreter::getStringFromAll(char* buffer, int len)
 {
@@ -105,6 +111,12 @@ DL_Interpreter::getStringCopy(char **stringPtr)
 int DL_Interpreter::evalDoubleStringExpression(const char* theExpression, double& current_val)
 {
 	return -1;
+}
+
+void
+DL_Interpreter::resetInput(int nArgs, int cArg, const char** argv)
+{
+    // does nothing
 }
 
 void
@@ -174,6 +186,12 @@ DL_Interpreter::setString(std::vector<std::vector<const char*>>& data)
 }
 
 int DL_Interpreter::setString(std::map<const char*, std::vector<const char*>>& data) {
+    return -1;
+}
+
+int
+DL_Interpreter::setGenericDict(GenericDict& data)
+{
     return -1;
 }
 

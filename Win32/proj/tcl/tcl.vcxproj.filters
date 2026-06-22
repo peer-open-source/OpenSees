@@ -70,5 +70,8 @@
     <ClInclude Include="..\..\..\SRC\api\packages.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\SRC\api\GenericDict.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

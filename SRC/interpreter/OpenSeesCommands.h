@@ -62,6 +62,7 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <Timer.h>
 #include <SimulationInformation.h>
 #include <elementAPI.h>
+#include <packages.h>
 #include <MachineBroker.h>
 #include "OpenSeesReliabilityCommands.h"
 
@@ -144,6 +145,9 @@ public:
     EigenSOE* getEigenSOE() {return theEigenSOE;}
     EigenSOE** getEigenSOEPointer() {return &theEigenSOE;}
 
+    void setBuiltModel(bool blt) {builtModel = blt;}
+    bool getBuiltModel() {return builtModel;}
+
     void setFileDatabase(const char* filename);
     FE_Datastore* getDatabase() {return theDatabase;}
 
@@ -157,7 +161,8 @@ public:
     void wipeAnalysis();
     void wipe();
     int eigen(int typeSolver, double shift,
-	      bool generalizedAlgo, bool findSmallest);
+	      bool generalizedAlgo, bool findSmallest,
+              EigenSOE *providedEigenSOE = nullptr);
 
 private:
 
@@ -180,6 +185,7 @@ private:
     ConvergenceTest *theTest;
 
     int numEigen;
+    bool builtModel;
     FE_Datastore* theDatabase;
     FEM_ObjectBrokerAllClasses theBroker;
     Timer theTimer;
@@ -190,7 +196,6 @@ private:
     int numChannels;
 
     OpenSeesReliabilityCommands* reliability;
-
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -201,6 +206,8 @@ private:
 int OPS_UniaxialMaterial();
 int OPS_testUniaxialMaterial();
 int OPS_setStrain();
+int OPS_setTrialStrain();
+int OPS_commitState();
 int OPS_getStrain();
 int OPS_getStress();
 int OPS_getTangent();
@@ -311,6 +318,7 @@ int OPS_sectionStiffness();
 int OPS_sectionFlexibility();
 int OPS_sectionLocation();
 int OPS_sectionWeight();
+int OPS_sectionResponseType();
 int OPS_sectionTag();
 int OPS_sectionDisplacement();
 int OPS_cbdiDisplacement();
@@ -446,6 +454,7 @@ int OPS_solveCPU();
 int OPS_accelCPU();
 int OPS_numFact();
 int OPS_numIter();
+bool* OPS_builtModel();
 int* OPS_GetNumEigen();
 int OPS_systemSize();
 int OPS_domainCommitTag();
@@ -463,6 +472,7 @@ void* OPS_ParallelRCM();
 
 void* OPS_ParallelDisplacementControl();
 
+void* OPS_ItpackLinSolver();
 void* OPS_MumpsSolver();
 
 // Sensitivity:BEGIN /////////////////////////////////////////////
@@ -475,6 +485,7 @@ int OPS_Node();
 int OPS_HomogeneousBC();
 int OPS_EqualDOF();
 int OPS_EqualDOF_Mixed();
+int OPS_EquationConstraint();
 int OPS_HomogeneousBC_X();
 int OPS_HomogeneousBC_Y();
 int OPS_HomogeneousBC_Z();
@@ -575,6 +586,7 @@ void* OPS_ExplicitDifference();
 void* OPS_LinearAlgorithm();
 void* OPS_NewtonRaphsonAlgorithm();
 void* OPS_ModifiedNewton();
+void* OPS_NewtonHallM();
 void* OPS_Broyden();
 void* OPS_BFGS();
 
@@ -587,6 +599,5 @@ void* OPS_BFGS();
 //              UCFiber, TclModelBuilderYS_SectionCommand, yieldSurface_BC,
 //              ysEvolutionModel, plasticMaterial, cyclicModel, damageModel,
 //              FirePattern, PySimple1Gen, TzSimple1Gen, Hfiber,
-//              hystereticBackbone, updateMaterialStage, updateMaterials,
-//              loadPackage
+//              updateMaterials
 #endif

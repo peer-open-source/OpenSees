@@ -37,6 +37,7 @@ TclWrapper::TclWrapper()
 
 TclWrapper::~TclWrapper()
 {
+    // does nothing
 }
 
 void
@@ -88,6 +89,271 @@ void
 TclWrapper::setOutputs(Tcl_Interp* interp, const char* str)
 {
     Tcl_SetResult(interp, (char*)str, TCL_VOLATILE);
+}
+
+void
+TclWrapper::setOutputs(Tcl_Interp* interp, std::vector<std::vector<int>>& data)
+{
+    // a vector holds tcl objects of lists
+    std::vector<Tcl_Obj*> tclData(data.size());
+
+    // for each sublist
+    for (int i = 0; i < (int)data.size(); ++i) {
+        std::vector<Tcl_Obj*> sublist(data[i].size());
+        for (int j = 0; j < (int)data[i].size(); ++j) {
+            sublist[j] = Tcl_NewIntObj(data[i][j]);
+        }
+        tclData[i] = Tcl_NewListObj((int)sublist.size(), &sublist[0]);
+    }
+
+    // Tcl object for list of list
+    Tcl_Obj* lists = Tcl_NewListObj((int)tclData.size(), &tclData[0]);
+
+    // set result
+    Tcl_SetObjResult(interp, lists);
+}
+
+void
+TclWrapper::setOutputs(Tcl_Interp* interp, std::map<const char*, int>& data)
+{
+    // dict object
+    auto* dict = Tcl_NewDictObj();
+
+    // for each item
+    for (auto& item : data) {
+        Tcl_DictObjPut(
+            interp, dict,
+            Tcl_NewStringObj(item.first, (int)strlen(item.first)),
+            Tcl_NewIntObj(item.second));
+    }
+
+    // set result
+    Tcl_SetObjResult(interp, dict);
+}
+
+void
+TclWrapper::setOutputs(Tcl_Interp* interp, std::map<const char*, std::vector<int>>& data)
+{
+    // dict object
+    auto* dict = Tcl_NewDictObj();
+
+    // for each item
+    for (auto& item : data) {
+        // sublist
+        std::vector<Tcl_Obj*> sublist(item.second.size());
+        for (int j = 0; j < (int)item.second.size(); ++j) {
+            sublist[j] = Tcl_NewIntObj(item.second[j]);
+        }
+        auto* obj = Tcl_NewListObj((int)sublist.size(), &sublist[0]);
+
+        Tcl_DictObjPut(
+            interp, dict,
+            Tcl_NewStringObj(item.first, (int)strlen(item.first)), obj);
+    }
+
+    // set result
+    Tcl_SetObjResult(interp, dict);
+}
+
+void
+TclWrapper::setOutputs(Tcl_Interp* interp, std::vector<std::vector<double>>& data)
+{
+    // a vector holds tcl objects of lists
+    std::vector<Tcl_Obj*> tclData(data.size());
+
+    // for each sublist
+    for (int i = 0; i < (int)data.size(); ++i) {
+        std::vector<Tcl_Obj*> sublist(data[i].size());
+        for (int j = 0; j < (int)data[i].size(); ++j) {
+            sublist[j] = Tcl_NewDoubleObj(data[i][j]);
+        }
+        tclData[i] = Tcl_NewListObj((int)sublist.size(), &sublist[0]);
+    }
+
+    // Tcl object for list of list
+    Tcl_Obj* lists = Tcl_NewListObj((int)tclData.size(), &tclData[0]);
+
+    // set result
+    Tcl_SetObjResult(interp, lists);
+}
+
+void
+TclWrapper::setOutputs(Tcl_Interp* interp, std::map<const char*, double>& data)
+{
+    // dict object
+    auto* dict = Tcl_NewDictObj();
+
+    // for each item
+    for (auto& item : data) {
+        Tcl_DictObjPut(
+            interp, dict,
+            Tcl_NewStringObj(item.first, (int)strlen(item.first)),
+            Tcl_NewDoubleObj(item.second));
+    }
+
+    // set result
+    Tcl_SetObjResult(interp, dict);
+}
+
+void
+TclWrapper::setOutputs(Tcl_Interp* interp, std::map<const char*, std::vector<double>>& data)
+{
+    // dict object
+    auto* dict = Tcl_NewDictObj();
+
+    // for each item
+    for (auto& item : data) {
+        // sublist
+        std::vector<Tcl_Obj*> sublist(item.second.size());
+        for (int j = 0; j < (int)item.second.size(); ++j) {
+            sublist[j] = Tcl_NewDoubleObj(item.second[j]);
+        }
+        auto* obj = Tcl_NewListObj((int)sublist.size(), &sublist[0]);
+
+        Tcl_DictObjPut(
+            interp, dict,
+            Tcl_NewStringObj(item.first, (int)strlen(item.first)), obj);
+    }
+
+    // set result
+    Tcl_SetObjResult(interp, dict);
+}
+
+void
+TclWrapper::setOutputs(Tcl_Interp* interp, std::vector<const char*>& data)
+{
+    // a vector holds tcl objects of lists
+    std::vector<Tcl_Obj*> tclData(data.size());
+
+    // for each string
+    for (int i = 0; i < (int)data.size(); ++i) {
+        tclData[i] = Tcl_NewStringObj(data[i], (int)strlen(data[i]));
+    }
+
+    // Tcl object for list of list
+    Tcl_Obj* list = Tcl_NewListObj((int)tclData.size(), &tclData[0]);
+
+    // set result
+    Tcl_SetObjResult(interp, list);
+}
+
+void
+TclWrapper::setOutputs(Tcl_Interp* interp, std::vector<std::vector<const char*>>& data)
+{
+    // a vector holds tcl objects of lists
+    std::vector<Tcl_Obj*> tclData(data.size());
+
+    // for each sublist
+    for (int i = 0; i < (int)data.size(); ++i) {
+        std::vector<Tcl_Obj*> sublist(data[i].size());
+        for (int j = 0; j < (int)data[i].size(); ++j) {
+            sublist[j] = Tcl_NewStringObj(data[i][j], (int)strlen(data[i][j]));
+        }
+        tclData[i] = Tcl_NewListObj((int)sublist.size(), &sublist[0]);
+    }
+
+    // Tcl object for list of list
+    Tcl_Obj* lists = Tcl_NewListObj((int)tclData.size(), &tclData[0]);
+
+    // set result
+    Tcl_SetObjResult(interp, lists);
+}
+
+void
+TclWrapper::setOutputs(Tcl_Interp* interp, std::map<const char*, const char*>& data)
+{
+    // dict object
+    auto* dict = Tcl_NewDictObj();
+
+    // for each item
+    for (auto& item : data) {
+        Tcl_DictObjPut(
+            interp, dict,
+            Tcl_NewStringObj(item.first, (int)strlen(item.first)),
+            Tcl_NewStringObj(item.second, (int)strlen(item.second)));
+    }
+
+    // set result
+    Tcl_SetObjResult(interp, dict);
+}
+
+void
+TclWrapper::setOutputs(Tcl_Interp* interp, std::map<const char*, std::vector<const char*>>& data)
+{
+    // dict object
+    auto* dict = Tcl_NewDictObj();
+
+    // for each item
+    for (auto& item : data) {
+        // sublist
+        std::vector<Tcl_Obj*> sublist(item.second.size());
+        for (int j = 0; j < (int)item.second.size(); ++j) {
+            sublist[j] = Tcl_NewStringObj(item.second[j],
+                (int)strlen(item.second[j]));
+        }
+        auto* obj = Tcl_NewListObj((int)sublist.size(), &sublist[0]);
+
+        Tcl_DictObjPut(
+            interp, dict,
+            Tcl_NewStringObj(item.first, (int)strlen(item.first)), obj);
+    }
+
+    // set result
+    Tcl_SetObjResult(interp, dict);
+}
+
+void
+TclWrapper::setGenericDictOutput(Tcl_Interp* interp, GenericDict& data)
+{
+    // Create TCL dictionary
+    Tcl_Obj* dict = Tcl_NewDictObj();
+    
+    for (auto& [key, value] : data) {
+        Tcl_Obj* tclValue = nullptr;
+        
+        // Use std::visit to convert variant to TCL object
+        std::visit([&](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            
+            if constexpr (std::is_same_v<T, int>) {
+                tclValue = Tcl_NewIntObj(arg);
+                
+            } else if constexpr (std::is_same_v<T, double>) {
+                tclValue = Tcl_NewDoubleObj(arg);
+                
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                tclValue = Tcl_NewStringObj(arg.c_str(), -1);
+                
+            } else if constexpr (std::is_same_v<T, std::vector<int>>) {
+                std::vector<Tcl_Obj*> list(arg.size());
+                for (size_t i = 0; i < arg.size(); i++) {
+                    list[i] = Tcl_NewIntObj(arg[i]);
+                }
+                tclValue = Tcl_NewListObj((int)list.size(), &list[0]);
+                
+            } else if constexpr (std::is_same_v<T, std::vector<double>>) {
+                std::vector<Tcl_Obj*> list(arg.size());
+                for (size_t i = 0; i < arg.size(); i++) {
+                    list[i] = Tcl_NewDoubleObj(arg[i]);
+                }
+                tclValue = Tcl_NewListObj((int)list.size(), &list[0]);
+                
+            } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
+                std::vector<Tcl_Obj*> list(arg.size());
+                for (size_t i = 0; i < arg.size(); i++) {
+                    list[i] = Tcl_NewStringObj(arg[i].c_str(), -1);
+                }
+                tclValue = Tcl_NewListObj((int)list.size(), &list[0]);
+            }
+        }, value);
+        
+        if (tclValue != nullptr) {
+            Tcl_DictObjPut(interp, dict,
+                          Tcl_NewStringObj(key.c_str(), -1), tclValue);
+        }
+    }
+    
+    Tcl_SetObjResult(interp, dict);
 }
 
 ///////////////////////////////////////////
@@ -449,6 +715,14 @@ static int Tcl_ops_equalDOF(ClientData clientData, Tcl_Interp *interp, int argc,
     wrapper->resetCommandLine(argc, 1, argv);
 
     if (OPS_EqualDOF() < 0) return TCL_ERROR;
+
+    return TCL_OK;
+}
+
+static int Tcl_ops_equationConstraint(ClientData clientData, Tcl_Interp *interp, int argc,   TCL_Char **argv) {
+    wrapper->resetCommandLine(argc, 1, argv);
+
+    if (OPS_EquationConstraint() < 0) return TCL_ERROR;
 
     return TCL_OK;
 }
@@ -977,6 +1251,14 @@ static int Tcl_ops_sectionWeight(ClientData clientData, Tcl_Interp *interp, int 
     wrapper->resetCommandLine(argc, 1, argv);
 
     if (OPS_sectionWeight() < 0) return TCL_ERROR;
+
+    return TCL_OK;
+}
+
+static int Tcl_ops_sectionResponseType(ClientData clientData, Tcl_Interp *interp, int argc,   TCL_Char **argv) {
+    wrapper->resetCommandLine(argc, 1, argv);
+
+    if (OPS_sectionResponseType() < 0) return TCL_ERROR;
 
     return TCL_OK;
 }
@@ -1667,6 +1949,43 @@ static int Tcl_ops_partition(ClientData clientData, Tcl_Interp *interp, int argc
     return TCL_OK;
 }
 
+static int Tcl_ops_loadPackage(ClientData clientData, Tcl_Interp* interp, int argc, TCL_Char** argv)
+{
+    wrapper->resetCommandLine(argc, 1, argv);
+    
+    if (OPS_GetNumRemainingInputArgs() < 1) {
+        opserr << "WARNING insufficient arguments\n";
+        opserr << "Want: loadPackage libName? <fncName?>\n";
+        return TCL_ERROR;
+    }
+    
+    int res = -1;
+    void* libHandle;
+    int (*funcPtr)(ClientData clientData, Tcl_Interp *interp, int argc,
+        TCL_Char **argv, Domain*);
+    
+    // get the library function
+    if (argc == 2) {
+        res = getLibraryFunction(argv[1], argv[1], &libHandle, (void**)&funcPtr);
+    }
+    else if (argc == 3) {
+        res = getLibraryFunction(argv[1], argv[2], &libHandle, (void**)&funcPtr);
+    }
+    
+    // get the Domain
+    Domain* theDomain = OPS_GetDomain();
+    
+    // finally load the package (i.e., load the function from the library)
+    if (res == 0) {
+        res = (*funcPtr)(clientData, interp, argc, argv, theDomain);
+    }
+    else {
+        opserr << "Error: Could not find function: " << argv[1] << endln;
+    }
+    
+    return res;
+}
+
 //////////////////////////////////////////////
 ////////////// Add Tcl commands //////////////
 //////////////////////////////////////////////
@@ -1716,6 +2035,7 @@ TclWrapper::addOpenSeesCommands(Tcl_Interp* interp)
     addCommand(interp,"remove", &Tcl_ops_remove);
     addCommand(interp,"mass", &Tcl_ops_mass);
     addCommand(interp,"equalDOF", &Tcl_ops_equalDOF);
+    addCommand(interp,"equationConstraint", &Tcl_ops_equationConstraint);
     addCommand(interp,"nodeEigenvector", &Tcl_ops_nodeEigenvector);
     addCommand(interp,"getTime", &Tcl_ops_getTime);
     addCommand(interp,"setCreep", &Tcl_ops_setCreep);
@@ -1863,4 +2183,5 @@ TclWrapper::addOpenSeesCommands(Tcl_Interp* interp)
     addCommand(interp,"stiffnessDegradation", &Tcl_ops_strengthDegradation);
     addCommand(interp,"unloadingRule", &Tcl_ops_unloadingRule);
     addCommand(interp,"partition", &Tcl_ops_partition);
+    addCommand(interp,"loadPackage", &Tcl_ops_loadPackage);
 }

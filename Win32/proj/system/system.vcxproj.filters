@@ -44,6 +44,12 @@
     <Filter Include="fullGEN">
       <UniqueIdentifier>{e0cb2524-4cf0-4bc2-8174-528f424ad1ee}</UniqueIdentifier>
     </Filter>
+    <Filter Include="symGenEigen">
+      <UniqueIdentifier>{8f80af88-8cd7-4d69-aa43-d5114fb762ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sparsePython">
+      <UniqueIdentifier>{cf142a27-93bf-43e5-bc1c-965cb39f08ba}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\DomainSolver.cpp">
@@ -226,6 +232,48 @@
     <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparseGEN\PFEMSolver_LumpM.cpp">
       <Filter>sparseGEN</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\SymmGeneralizedEigenSOE.cpp">
+      <Filter>symGenEigen</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\SymmGeneralizedEigenSolver.cpp">
+      <Filter>symGenEigen</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCompressedEigenSOE.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCompressedEigenSolver.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCOOEigenSOE.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCOOEigenSolver.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonEigenCommon.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonEigenFactory.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCommon.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCompressedLinSOE.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCompressedLinSolver.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCOOLinSOE.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCOOLinSolver.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonFactory.cpp">
+      <Filter>sparsePython</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\DomainSolver.h">
@@ -395,6 +443,48 @@
     </ClInclude>
     <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparseGEN\PFEMSolver_LumpM.h">
       <Filter>sparseGEN</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\SymmGeneralizedEigenSOE.h">
+      <Filter>symGenEigen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\SymmGeneralizedEigenSolver.h">
+      <Filter>symGenEigen</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCompressedEigenSOE.h">
+      <Filter>sparsePython</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCompressedEigenSolver.h">
+      <Filter>sparsePython</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCOOEigenSOE.h">
+      <Filter>sparsePython</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonCOOEigenSolver.h">
+      <Filter>sparsePython</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonEigenCommon.h">
+      <Filter>sparsePython</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\eigenSOE\sparsePython\SparsePythonEigenFactory.h">
+      <Filter>sparsePython</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCommon.h">
+      <Filter>sparsePython</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCompressedLinSOE.h">
+      <Filter>sparsePython</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCompressedLinSolver.h">
+      <Filter>sparsePython</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCOOLinSOE.h">
+      <Filter>sparsePython</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonCOOLinSolver.h">
+      <Filter>sparsePython</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\SRC\system_of_eqn\linearSOE\sparsePython\SparsePythonFactory.h">
+      <Filter>sparsePython</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

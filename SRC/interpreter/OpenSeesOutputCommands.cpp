@@ -86,7 +86,9 @@ void* OPS_AlgorithmRecorder();
 void* OPS_RemoveRecorder();
 #ifdef _HDF5
 void* OPS_MPCORecorder();
+void* OPS_VTKHDF_Recorder();
 #endif
+void* OPS_GmshRecorder();
 BackgroundMesh& OPS_getBgMesh();
 
 void* OPS_DriftRecorder();
@@ -123,8 +125,10 @@ namespace {
 	recordersMap.insert(std::make_pair("Collapse", &OPS_RemoveRecorder));
 	recordersMap.insert(std::make_pair("Drift", &OPS_DriftRecorder));
 	recordersMap.insert(std::make_pair("EnvelopeDrift", &OPS_EnvelopeDriftRecorder));
+	recordersMap.insert(std::make_pair("gmsh", &OPS_GmshRecorder));
 #ifdef _HDF5
 	recordersMap.insert(std::make_pair("mpco", &OPS_MPCORecorder));
+    recordersMap.insert(std::make_pair("VTKHDF", &OPS_VTKHDF_Recorder));
 #endif
         //recordersMap.insert(std::make_pair("Drift", &OPS_DriftRecorder));
         //recordersMap.insert(std::make_pair("Pattern", &OPS_PatternRecorder));
@@ -247,6 +251,71 @@ int OPS_nodeDisp()
 
     return 0;
 }
+
+
+int OPS_nodeCrd()
+{
+    if (OPS_GetNumRemainingInputArgs() < 1) {
+	opserr << "WARNING insufficient args: nodeDisp nodeTag <dof ...>\n";
+	return -1;
+    }
+
+    // tag and dof
+    int data[2] = {0, -1};
+    int numdata = OPS_GetNumRemainingInputArgs();
+    if (numdata > 2) {
+	numdata = 2;
+    }
+
+    if (OPS_GetIntInput(&numdata, data) < 0) {
+	opserr<<"WARNING nodeDisp - failed to read int inputs\n";
+	return -1;
+    }
+    data[1]--;
+
+    // get Crds
+    Domain* theDomain = OPS_GetDomain();
+    if (theDomain == 0) return -1;
+    Node *theNode = theDomain->getNode(data[0]);
+    if (theNode == 0) return -1;
+
+    const Vector &crd = theNode->getCrds();
+
+
+    // set outputs
+    int size = crd.Size();
+    if (data[1] >= 0) {
+	if (data[1] >= size) {
+	    opserr << "WARNING nodeDisp nodeTag? dof? - dofTag? too large\n";
+	    return -1;
+	}
+
+	double value = crd(data[1]);
+	numdata = 1;
+
+	if (OPS_SetDoubleOutput(&numdata, &value, true) < 0) {
+	    opserr<<"WARNING nodeDisp - failed to read double inputs\n";
+	    return -1;
+	}
+
+
+    } else {
+
+      int size = crd.Size();
+      std::vector<double> values(size);
+      for (int i=0; i<size; i++) {
+	values[i] =  crd(i);
+      }
+      
+      if (OPS_SetDoubleOutput(&size, &values[0], false) < 0) {
+	opserr<<"WARNING nodeCrd - failed to set double inputs\n";
+	return -1;
+      }
+    }
+    
+    return 0;
+}
+
 
 int OPS_nodeReaction()
 {
@@ -1594,7 +1663,7 @@ int OPS_getPatterns()
   while ((thePattern = thePatterns()) != 0)
     data.push_back(thePattern->getTag());
 
-  int size = data.size();
+  int size = (int)data.size();
   
   if (OPS_SetIntOutput(&size, data.data(), false) < 0) {
     opserr << "WARNING getPatterns - failed to set output\n";
@@ -1622,7 +1691,7 @@ int OPS_getFixedNodes()
 	sort( data.begin(), data.end() );
 	data.erase( unique( data.begin(), data.end() ), data.end() );
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetIntOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
@@ -1662,7 +1731,7 @@ int OPS_getFixedDOFs()
         }
     }
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetIntOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
@@ -1705,7 +1774,7 @@ int OPS_getConstrainedNodes()
 	sort( data.begin(), data.end() );
 	data.erase( unique( data.begin(), data.end() ), data.end() );
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetIntOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
@@ -1786,7 +1855,7 @@ int OPS_getConstrainedDOFs()
         }
     }
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetIntOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
@@ -1829,7 +1898,7 @@ int OPS_getRetainedNodes()
 	sort( data.begin(), data.end() );
 	data.erase( unique( data.begin(), data.end() ), data.end() );
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetIntOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
@@ -1910,7 +1979,7 @@ int OPS_getRetainedDOFs()
         }
     }
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetIntOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
@@ -3598,6 +3667,10 @@ int OPS_getEleClassTags()
 	  }
 
 	  Element *theEle = theDomain->getElement(eleTag);
+	  if (theEle == 0) {
+		  opserr << "getEleClassTags - element with tag " << eleTag << " not found" << endln;
+		  return -1;
+	  }
 
 	  data.push_back(theEle->getClassTag());
 
@@ -3606,7 +3679,7 @@ int OPS_getEleClassTags()
 	  return -1;
     }
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetIntOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
@@ -3665,7 +3738,7 @@ int OPS_getEleLoadClassTags()
     }
 
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetIntOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
@@ -3723,7 +3796,7 @@ int OPS_getEleLoadTags()
 	return -1;
     }
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetIntOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
@@ -3794,7 +3867,7 @@ int OPS_getEleLoadData()
 	return -1;
     }
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetDoubleOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
@@ -3852,7 +3925,7 @@ int OPS_getNodeLoadTags()
 	return -1;
     }
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetIntOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
@@ -3923,7 +3996,7 @@ int OPS_getNodeLoadData()
 	return -1;
     }
 
-	int size = data.size();
+	int size = (int)data.size();
 
 	if (OPS_SetDoubleOutput(&size, data.data(), false) < 0) {
 	  opserr << "WARNING failed to set output\n";
