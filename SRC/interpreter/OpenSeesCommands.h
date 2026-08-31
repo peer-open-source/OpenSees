@@ -157,7 +157,8 @@ public:
     void wipeAnalysis();
     void wipe();
     int eigen(int typeSolver, double shift,
-	      bool generalizedAlgo, bool findSmallest);
+	      bool generalizedAlgo, bool findSmallest,
+              EigenSOE *providedEigenSOE = nullptr);
 
 private:
 
@@ -201,6 +202,8 @@ private:
 int OPS_UniaxialMaterial();
 int OPS_testUniaxialMaterial();
 int OPS_setStrain();
+int OPS_setTrialStrain();
+int OPS_commitState();
 int OPS_getStrain();
 int OPS_getStress();
 int OPS_getTangent();
@@ -311,6 +314,7 @@ int OPS_sectionStiffness();
 int OPS_sectionFlexibility();
 int OPS_sectionLocation();
 int OPS_sectionWeight();
+int OPS_sectionResponseType();
 int OPS_sectionTag();
 int OPS_sectionDisplacement();
 int OPS_cbdiDisplacement();
@@ -463,6 +467,7 @@ void* OPS_ParallelRCM();
 
 void* OPS_ParallelDisplacementControl();
 
+void* OPS_ItpackLinSolver();
 void* OPS_MumpsSolver();
 
 // Sensitivity:BEGIN /////////////////////////////////////////////
@@ -475,6 +480,7 @@ int OPS_Node();
 int OPS_HomogeneousBC();
 int OPS_EqualDOF();
 int OPS_EqualDOF_Mixed();
+int OPS_EquationConstraint();
 int OPS_HomogeneousBC_X();
 int OPS_HomogeneousBC_Y();
 int OPS_HomogeneousBC_Z();
@@ -575,6 +581,7 @@ void* OPS_ExplicitDifference();
 void* OPS_LinearAlgorithm();
 void* OPS_NewtonRaphsonAlgorithm();
 void* OPS_ModifiedNewton();
+void* OPS_NewtonHallM();
 void* OPS_Broyden();
 void* OPS_BFGS();
 

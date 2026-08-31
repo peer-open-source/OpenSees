@@ -42,12 +42,14 @@
 #include <Vector.h>
 class SP_Constraint;
 class MP_Constraint;
+class EQ_Constraint;
 
 class LagrangeDOF_Group: public DOF_Group
 {
   public:
     LagrangeDOF_Group(int tag, SP_Constraint &spPtr);    
     LagrangeDOF_Group(int tag, MP_Constraint &mpPtr);        
+    LagrangeDOF_Group(int tag, EQ_Constraint &eqPtr);        
     virtual ~LagrangeDOF_Group();    
 
     // methods to form the tangent
@@ -73,6 +75,8 @@ class LagrangeDOF_Group: public DOF_Group
     virtual void incrNodeVel(const Vector &udot);
     virtual void incrNodeAccel(const Vector &udotdot);
 
+  virtual void setEigenvector(int mode, const Vector &eigenvector);
+  
     virtual void  zeroTangent(void);
     virtual void  addMtoTang(double fact = 1.0);    
     virtual void  zeroUnbalance(void);

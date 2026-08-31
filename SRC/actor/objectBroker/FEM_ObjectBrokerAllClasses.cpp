@@ -63,6 +63,7 @@
 #include "BoucWenInfill.h"
 #include "SPSW02.h"			//SAJalali
 #include "ElasticMaterial.h"
+#include "ElasticMaterialThermal.h"
 #include "ElasticMultiLinear.h"
 #include "ElasticPowerFunc.h"
 #include "Elastic2Material.h"
@@ -74,9 +75,12 @@
 #include "TensionOnlyMaterial.h"
 #include "ASD_SMA_3K.h"
 #include "ASDConcrete1DMaterial.h"
+#include "ASDSteel1DMaterial.h"
 #include "Concrete01.h"
 #include "Concrete01WithSITC.h"
 #include "Concrete02.h"
+#include "Concrete02Thermal.h"
+#include "ConcreteECThermal.h"
 #include "Concrete02IS.h"
 #include "Concrete04.h"
 #include "Concrete06.h" 
@@ -87,10 +91,14 @@
 #include "TDConcreteEXP.h"
 #include "TDConcreteMC10.h"
 #include "TDConcreteMC10NL.h"
-#include "CreepMaterial.h"
+#include "CreepShrinkageACI209.h"
 #include "OriginCentered.h"
 #include "Steel01.h"
+#include "Steel01Thermal.h"
 #include "Steel02.h"
+#include "Steel02Thermal.h"
+#include "SteelECThermal.h"
+#include "StainlessECThermal.h"
 #include "SteelMPF.h"
 #include "Steel2.h"
 #include "Steel4.h"
@@ -296,6 +304,7 @@
 #include "J2CyclicBoundingSurface.h"
 #include "J2CyclicBoundingSurface3D.h"
 #include "J2CyclicBoundingSurfacePlaneStrain.h"
+#include "UWmaterials/LinearElasticGGmax.h"
 #include "UWmaterials/InitialStateAnalysisWrapper.h"
 #include "stressDensityModel/stressDensity.h"
 #include "InitStressNDMaterial.h"
@@ -420,6 +429,7 @@
 #include "PML/PML2D_5.h"
 #include "PML/PML2D_12.h"
 #include "PML/PML2DVISCOUS.h"
+#include "PML/PML3DVISCOUS.h"
 
 
 #include "UP-ucsd/Nine_Four_Node_QuadUP.h"
@@ -465,6 +475,7 @@
 #include "mvlem/E_SFI.h"		// C. N. Lopez
 
 #include "mefi/MEFI.h"		// C. N. Lopez
+#include "mefi/MEFI_3D.h"	// C. N. Lopez
 
 #include "elastomericBearing/ElastomericBearingBoucWen2d.h"
 #include "elastomericBearing/ElastomericBearingBoucWen3d.h"
@@ -560,6 +571,7 @@
 #include "DriftRecorder.h"
 #ifdef _HDF5
 #include "MPCORecorder.h"
+#include "VTKHDF_Recorder.h"
 #endif // _HDF5
 #include "VTK_Recorder.h"
 #include "GmshRecorder.h"
@@ -577,6 +589,8 @@
 // Pressure_Constraint header file
 #include "Pressure_Constraint.h"
 
+#include "EQ_Constraint.h"
+
 // nodal load header files
 #include "NodalLoad.h"
 
@@ -586,6 +600,7 @@
 #include "Beam2dPointLoad.h"
 #include "Beam3dUniformLoad.h"
 #include "Beam3dPointLoad.h"
+#include "BeamUniformMoment.h"
 #include "BrickSelfWeight.h"
 #include "SelfWeight.h"
 #include "SurfaceLoader.h"
@@ -880,7 +895,7 @@ FEM_ObjectBrokerAllClasses::getNewElement(int classTag)
 		return new InertiaTruss();
       
     case ELE_TAG_ZeroLength:  
-      return new ZeroLength();
+      return new ZeroLength(); 	     
 
     case ELE_TAG_CoupledZeroLength:
       return new CoupledZeroLength();
@@ -910,13 +925,13 @@ FEM_ObjectBrokerAllClasses::getNewElement(int classTag)
       return new FourNodeQuadUP(); 	     
       
     case ELE_TAG_FourNodeQuad:  
-      return new FourNodeQuad(); 
+      return new FourNodeQuad(); 	     
 
     case ELE_TAG_FourNodeQuad3d:  
       return new FourNodeQuad3d(); 
       
     case ELE_TAG_Tri31:  
-      return new Tri31();
+      return new Tri31(); 	     
 
     case ELE_TAG_SixNodeTri:  
       return new SixNodeTri();      
@@ -1029,7 +1044,7 @@ FEM_ObjectBrokerAllClasses::getNewElement(int classTag)
 
     case ELE_TAG_TriSurfaceLoad:
       return new TriSurfaceLoad();      
-      
+
     case ELE_TAG_Quad4FiberOverlay:
       return new Quad4FiberOverlay(); //Amin Pakzad
 	
@@ -1041,7 +1056,7 @@ FEM_ObjectBrokerAllClasses::getNewElement(int classTag)
 
     case ELE_TAG_FourNodeTetrahedron:
       return new FourNodeTetrahedron();
-      
+	
 	case ELE_TAG_PML2D:
 	  return new PML2D();
 
@@ -1060,6 +1075,9 @@ FEM_ObjectBrokerAllClasses::getNewElement(int classTag)
 	case ELE_TAG_PML2DVISCOUS:
 	  return new PML2DVISCOUS(); // Amin Pakzad
 	
+	case ELE_TAG_PML3DVISCOUS:
+	  return new PML3DVISCOUS(); // Amin Pakzad
+	  
     case ELE_TAG_BeamContact2D:
       return new BeamContact2D();
       
@@ -1086,13 +1104,13 @@ FEM_ObjectBrokerAllClasses::getNewElement(int classTag)
 
     case ELE_TAG_ShellMITC9:
       return new ShellMITC9();
-
+      
     case ELE_TAG_ShellDKGQ:      //Added by Lisha Wang, Xinzheng Lu, Linlin Xie, Song Cen & Quan Gu
       return new ShellDKGQ();  //Added by Lisha Wang, Xinzheng Lu, Linlin Xie, Song Cen & Quan Gu
       
     case ELE_TAG_ShellNLDKGQ:      //Added by Lisha Wang, Xinzheng Lu, Linlin Xie, Song Cen & Quan Gu
       return new ShellNLDKGQ();  //Added by Lisha Wang, Xinzheng Lu, Linlin Xie, Song Cen & Quan Gu
-
+    
     case ELE_TAG_ShellDKGT:
       return new ShellDKGT();
       
@@ -1104,7 +1122,7 @@ FEM_ObjectBrokerAllClasses::getNewElement(int classTag)
     
     case ELE_TAG_ASDShellT3:   // Massimo Petracca
       return new ASDShellT3(); // Massimo Petracca
-	    
+    
     case ELE_TAG_BbarBrick:
       return new BbarBrick();
             
@@ -1115,7 +1133,7 @@ FEM_ObjectBrokerAllClasses::getNewElement(int classTag)
       return new Inno3DPnPJoint();	// Cristian Miculas
       
     case ELE_TAG_TwoNodeLink:				
-      return new TwoNodeLink();
+      return new TwoNodeLink();			
 
     case ELE_TAG_TwoNodeLinkSection:				
       return new TwoNodeLinkSection();			      
@@ -1145,7 +1163,10 @@ FEM_ObjectBrokerAllClasses::getNewElement(int classTag)
 		return new E_SFI();		// C. N. Lopez	
 		
 	case ELE_TAG_MEFI:			// C. N. Lopez
-		return new MEFI();		// C. N. Lopez		
+		return new MEFI();		// C. N. 
+
+	case ELE_TAG_MEFI_3D:		// C. N. Lopez
+		return new MEFI_3D();	// C. N. Lopez		
 
     case ELE_TAG_BBarFourNodeQuadUP:
       return new BBarFourNodeQuadUP();			
@@ -1284,6 +1305,23 @@ FEM_ObjectBrokerAllClasses::getNewMP(int classTag)
 }
 
 
+EQ_Constraint *
+FEM_ObjectBrokerAllClasses::getNewEQ(int classTag)
+{
+    switch(classTag) {
+	case CNSTRNT_TAG_EQ_Constraint:  
+	     return new EQ_Constraint(classTag);
+
+	default:
+	     opserr << "FEM_ObjectBrokerAllClasses::getNewEQ - ";
+	     opserr << " - no EQ_Constraint type exists for class tag ";
+	     opserr << classTag << endln;
+	     return 0;
+	     
+	 }    
+}
+
+
 SP_Constraint *
 FEM_ObjectBrokerAllClasses::getNewSP(int classTag)
 {
@@ -1356,6 +1394,9 @@ FEM_ObjectBrokerAllClasses::getNewElementalLoad(int classTag)
     
     case LOAD_TAG_Beam3dPointLoad:
       return new Beam3dPointLoad();
+
+    case LOAD_TAG_BeamUniformMoment:
+      return new BeamUniformMoment();      
     
     case LOAD_TAG_BrickSelfWeight:
       return new BrickSelfWeight();	     
@@ -1522,7 +1563,7 @@ FEM_ObjectBrokerAllClasses::getNewSectionIntegration(int classTag)
 
   case SECTION_INTEGRATION_TAG_HSS:        
     return new HSSSectionIntegration();
-	  
+    
   default:
     opserr << "FEM_ObjectBrokerAllClasses::getSectionIntegration - ";
     opserr << " - no SectionIntegration type exists for class tag ";
@@ -1692,6 +1733,8 @@ FEM_ObjectBrokerAllClasses::getNewUniaxialMaterial(int classTag)
 		return new BoucWenInfill();		
 	case MAT_TAG_ElasticMaterial:
 	     return new ElasticMaterial();
+	case MAT_TAG_ElasticMaterialThermal:
+	  return new ElasticMaterialThermal();	     
 
 	case MAT_TAG_Elastic2Material:  
 	     return new Elastic2Material(); 
@@ -1726,6 +1769,9 @@ FEM_ObjectBrokerAllClasses::getNewUniaxialMaterial(int classTag)
 	case MAT_TAG_ASDConcrete1DMaterial:  
 	     return new ASDConcrete1DMaterial();
 
+	case MAT_TAG_ASDSteel1DMaterial:  
+	     return new ASDSteel1DMaterial();
+
 	case MAT_TAG_Concrete01:  
 	     return new Concrete01();
 
@@ -1734,6 +1780,12 @@ FEM_ObjectBrokerAllClasses::getNewUniaxialMaterial(int classTag)
 
 	case MAT_TAG_Concrete02:  
 	     return new Concrete02();
+
+	case MAT_TAG_Concrete02Thermal:  
+	     return new Concrete02Thermal();
+
+	case MAT_TAG_ConcreteECThermal:  
+	     return new ConcreteECThermal();	     	     
 
 	case MAT_TAG_Concrete02IS:  
 	     return new Concrete02IS();	     
@@ -1750,8 +1802,8 @@ FEM_ObjectBrokerAllClasses::getNewUniaxialMaterial(int classTag)
 	case MAT_TAG_ConcretewBeta:  
 	     return new ConcretewBeta();
 
-    case MAT_TAG_CreepMaterial:
-      return new CreepMaterial();
+    case MAT_TAG_CreepShrinkageACI209:
+      return new CreepShrinkageACI209();
 
     case MAT_TAG_TDConcrete:
       return new TDConcrete();
@@ -1767,13 +1819,25 @@ FEM_ObjectBrokerAllClasses::getNewUniaxialMaterial(int classTag)
 
     case MAT_TAG_TDConcreteMC10NL:
       return new TDConcreteMC10NL();
-      
+
 	case MAT_TAG_Steel01:  
 	     return new Steel01();
+
+	case MAT_TAG_Steel01Thermal:  
+	     return new Steel01Thermal();	     
 
 	case MAT_TAG_Steel02:  
 	     return new Steel02();
 
+    case MAT_TAG_Steel02Thermal:
+      return new Steel02Thermal();
+
+    case MAT_TAG_SteelECThermal:
+      return new SteelECThermal();
+
+    case MAT_TAG_StainlessECThermal:
+      return new StainlessECThermal();      
+      
 	case MAT_TAG_SteelMPF:  
 	     return new SteelMPF();	     
 
@@ -1781,7 +1845,7 @@ FEM_ObjectBrokerAllClasses::getNewUniaxialMaterial(int classTag)
 	     return new Steel2();
 
 	case MAT_TAG_Steel4:  
-	     return new Steel4();
+	     return new Steel4();	     
 
 	case MAT_TAG_RambergOsgoodSteel:  
 	     return new RambergOsgoodSteel();	     	     
@@ -1824,7 +1888,7 @@ FEM_ObjectBrokerAllClasses::getNewUniaxialMaterial(int classTag)
 
 	case MAT_TAG_SelfCentering:
 	    return new SelfCenteringMaterial();
-	    
+
     case MAT_TAG_TzLiq1:
 		return new TzLiq1();
 
@@ -1887,7 +1951,7 @@ FEM_ObjectBrokerAllClasses::getNewUniaxialMaterial(int classTag)
 
 	case MAT_TAG_HookGap:
 	    return new HookGap();
-	    
+
 	case MAT_TAG_Viscous:
 		return new ViscousMaterial();
 
@@ -1928,7 +1992,7 @@ FEM_ObjectBrokerAllClasses::getNewUniaxialMaterial(int classTag)
 		return new ENTMaterial();
 
 	case MAT_TAG_GNG:
-		return new GNGMaterial();
+		return new GNGMaterial();		
 		
 	case MAT_TAG_Ratchet:
 		return new Ratchet();				
@@ -2022,7 +2086,7 @@ FEM_ObjectBrokerAllClasses::getNewUniaxialMaterial(int classTag)
 	    
 	case MAT_TAG_BarSlip:
 	    return new BarSlipMaterial();
-		
+		    
 	case MAT_TAG_HystereticPoly:			// Salvatore Sessa
 	    return new HystereticPoly();
 		    
@@ -2043,7 +2107,7 @@ FEM_ObjectBrokerAllClasses::getNewUniaxialMaterial(int classTag)
 
 	case MAT_TAG_Pinching4:
 		return new Pinching4Material();
-	
+
 	case MAT_TAG_CFSSSWP:
 	    return new CFSSSWP();
 
@@ -2096,14 +2160,14 @@ FEM_ObjectBrokerAllClasses::getNewSection(int classTag)
 	     return new ElasticBDShearSection2d();
 	     
 	case SEC_TAG_ElasticShear3d:
-	     return new ElasticShearSection3d();
-
+	     return new ElasticShearSection3d();	     
+	     
 	case SEC_TAG_ElasticTube3d:
 	     return new ElasticTubeSection3d();
 
     case SEC_TAG_ElasticWarpingShear2d:
       return new ElasticWarpingShearSection2d();
-	     
+
 	case SEC_TAG_Generic1d:
 	     return new GenericSection1d();
 	     
@@ -2145,7 +2209,7 @@ FEM_ObjectBrokerAllClasses::getNewSection(int classTag)
 
 	case SEC_TAG_FiberSectionWarping3d:
 		return new FiberSectionWarping3d();
-		
+
 	case SEC_TAG_ElasticPlateSection:
 		return new ElasticPlateSection();
 
@@ -2206,7 +2270,7 @@ FEM_ObjectBrokerAllClasses::getNewNDMaterial(int classTag)
     return new ElasticIsotropicPlateFiber();
 
   case ND_TAG_ElasticIsotropicBeamFiber:
-    return new ElasticIsotropicBeamFiber();
+    return new ElasticIsotropicBeamFiber();    
 
   case ND_TAG_ElasticIsotropicBeamFiber2d:
     return new ElasticIsotropicBeamFiber2d();
@@ -2361,6 +2425,9 @@ FEM_ObjectBrokerAllClasses::getNewNDMaterial(int classTag)
   
   case ND_TAG_J2CyclicBoundingSurfacePlaneStrain:
 	  return new J2CyclicBoundingSurfacePlaneStrain();
+
+  case ND_TAG_LinearElasticGGmax:
+	  return new LinearElasticGGmax();    
 
   case ND_TAG_InitialStateAnalysisWrapper:
       return new InitialStateAnalysisWrapper(); 
@@ -2735,6 +2802,9 @@ FEM_ObjectBrokerAllClasses::getPtrNewRecorder(int classTag)
 #ifdef _HDF5
 	case RECORDER_TAGS_MPCORecorder:
 	  return new MPCORecorder();
+
+  case RECORDER_TAGS_VTKHDF_Recorder:
+    return new VTKHDF_Recorder();
 #endif // _HDF5
 	default:
 	     opserr << "FEM_ObjectBrokerAllClasses::getNewRecordr - ";
@@ -2768,7 +2838,7 @@ FEM_ObjectBrokerAllClasses::getNewConstraintHandler(int classTag)
 
 	case HANDLER_TAG_TransformationConstraintHandler:  
 	     return new TransformationConstraintHandler();
-
+	     
 	case HANDLER_TAG_AutoConstraintHandler:  
 	     return new AutoConstraintHandler();
 
